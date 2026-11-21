@@ -47,7 +47,7 @@ def test_theme_css_has_vars(tmp_path):
     assert "--fs-title: 37px;" in (work / "theme.css").read_text(encoding="utf-8")  # 古い fontsizes は無視する
 
 
-def test_init_force_は古い_fontsizes_を引き継がない(tmp_path):
+def test_init_overwrite_は古い_fontsizes_を引き継がない(tmp_path):
     base = tmp_path / "out" / "pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)

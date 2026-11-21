@@ -102,7 +102,7 @@ def test_invalid_chart_spec_stops_with_message():
         charts.add_chart(None, {"chart": {"type": "area"}, "rect": {}}, None)
 
 
-def test_existing_pptx_requires_force(tmp_path, capsys):
+def test_existing_pptx_requires_overwrite(tmp_path, capsys):
     base = tmp_path / "out" / "pptx-maker-source" / "deck"
     assert cli.main(["init", str(base)]) == 0
     work = paths.resolve_work(base)

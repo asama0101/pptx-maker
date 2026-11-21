@@ -120,7 +120,7 @@ def test_使えない文字を含む名前は終了コード2(home, tmp_path, ca
     assert not (home / "templates").exists() or list((home / "templates").iterdir()) == []
 
 
-def test_同じ名前があれば終了コード4で止まり_force_で置き換える(home, tmp_path, capsys):
+def test_同じ名前があれば終了コード4で止まり_template_overwrite_で置き換える(home, tmp_path, capsys):
     old = make_pptx(tmp_path / "t.pptx", wide=True)
     run(capsys, "template-import", str(old), "--name", "標準")
     new = tmp_path / "new.pptx"
@@ -139,7 +139,7 @@ def test_同じ名前があれば終了コード4で止まり_force_で置き換
     assert (home / "templates" / "標準.pptx").read_bytes() == new.read_bytes()
 
 
-def test_force_で形式が変わっても_同じ名前は1つだけ残る(home, tmp_path, pkg, capsys):
+def test_template_overwrite_で形式が変わっても_同じ名前は1つだけ残る(home, tmp_path, pkg, capsys):
     run(capsys, "template-import", str(make_pptx(tmp_path / "t.pptx")), "--name", "標準")
     run(capsys, "template-overwrite", str(pkg / "assets" / "template" / "standard.potx"), "--name", "標準")
     assert [p.name for p in (home / "templates").iterdir()] == ["標準.potx"]

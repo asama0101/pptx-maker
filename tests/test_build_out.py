@@ -59,9 +59,9 @@ def no_browser(monkeypatch):
     monkeypatch.setitem(sys.modules, "playwright.sync_api", None)
 
 
-def build(work, out, capsys, force=False):
+def build(work, out, capsys, overwrite=False):
     """cmd_build を実物のまま呼ぶ。(終了コード, stdout, stderr)。"""
-    argv = ["build-overwrite" if force else "build", str(work), "--out", str(out)]
+    argv = ["build-overwrite" if overwrite else "build", str(work), "--out", str(out)]
     capsys.readouterr()
     rc = cli.main(argv)
     cap = capsys.readouterr()
@@ -75,7 +75,7 @@ def _slide_count(pptx: Path) -> int:
 # ---- --out の上書き ----
 
 
-def test_既存の出力先は_force_なしで終了コード4で止まり中身を変えない(work, tmp_path, temp_root, no_browser, capsys):
+def test_既存の出力先は上書きなしで終了コード4で止まり中身を変えない(work, tmp_path, temp_root, no_browser, capsys):
     out = tmp_path / "other.pptx"
     out.write_bytes(b"old")
     rc, stdout, err = build(work, out, capsys)
@@ -86,10 +86,10 @@ def test_既存の出力先は_force_なしで終了コード4で止まり中身
 
 
 @pytest.mark.slow
-def test_force_付きなら既存の出力先を新しい_pptx_で上書きする(work, tmp_path, temp_root, capsys):
+def test_build_overwrite_なら既存の出力先を新しい_pptx_で上書きする(work, tmp_path, temp_root, capsys):
     out = tmp_path / "other.pptx"
     out.write_bytes(b"old")
-    rc, stdout, _ = build(work, out, capsys, force=True)
+    rc, stdout, _ = build(work, out, capsys, overwrite=True)
     assert rc == 0
     assert json.loads(stdout)["pptx"] == str(out)
     assert _slide_count(out) == 1
@@ -104,7 +104,7 @@ def test_出力先が無ければ親フォルダを作って_pptx_を出す(work
 
 
 @pytest.mark.slow
-def test_できた_pptx_の検査に落ちたら_force_でも前の出力先を壊さず残骸も残さない(
+def test_できた_pptx_の検査に落ちたら_build_overwrite_でも前の出力先を壊さず残骸も残さない(
     work, tmp_path, temp_root, monkeypatch, capsys
 ):
     from pptx_maker import check
@@ -113,7 +113,7 @@ def test_できた_pptx_の検査に落ちたら_force_でも前の出力先を�
     out.write_bytes(b"old")
     bad = {"rule": "pptxBounds", "slide": 1, "message": "はみ出し", "severity": "error"}
     monkeypatch.setattr(check, "check_pptx", lambda path: [bad])
-    rc, stdout, _ = build(work, out, capsys, force=True)
+    rc, stdout, _ = build(work, out, capsys, overwrite=True)
     assert rc == 1
     res = json.loads(stdout)
     assert res["ok"] is False
@@ -124,7 +124,7 @@ def test_できた_pptx_の検査に落ちたら_force_でも前の出力先を�
 
 
 @pytest.mark.slow
-def test_できた_pptx_の検査に落ちたら_force_なしでも_pptx_を残さず再実行できる(
+def test_できた_pptx_の検査に落ちたら_overwrite_なしでも_pptx_を残さず再実行できる(
     work, tmp_path, temp_root, monkeypatch, capsys
 ):
     from pptx_maker import check
@@ -142,7 +142,7 @@ def test_できた_pptx_の検査に落ちたら_force_なしでも_pptx_を残�
 # ---- 既定と同じパスを --out に渡す ----
 
 
-def test_既定と同じパスの_out_が既存なら_force_なしで終了コード4で止まり中身を変えない(
+def test_既定と同じパスの_out_が既存なら_overwrite_なしで終了コード4で止まり中身を変えない(
     work, temp_root, no_browser, capsys
 ):
     out = paths.deck_dir(work) / "deck.pptx"
@@ -156,10 +156,10 @@ def test_既定と同じパスの_out_が既存なら_force_なしで終了コ�
 
 
 @pytest.mark.slow
-def test_既定と同じパスの_out_が既存でも_force_なら上書きされる(work, temp_root, capsys):
+def test_既定と同じパスの_out_が既存でも_build_overwrite_なら上書きされる(work, temp_root, capsys):
     out = paths.deck_dir(work) / "deck.pptx"
     out.write_bytes(b"original")
-    rc, _, _ = build(work, out, capsys, force=True)
+    rc, _, _ = build(work, out, capsys, overwrite=True)
     assert rc == 0
     assert _slide_count(out) == 1
 
@@ -181,7 +181,7 @@ def test_書き込めない出力先は測定の前に終了コード2で止ま�
     out.write_bytes(b"old")
     out.chmod(stat.S_IREAD)  # 読み取り専用（PowerPoint で開いている状態の代わり）
     try:
-        rc, stdout, err = build(work, out, capsys, force=True)
+        rc, stdout, err = build(work, out, capsys, overwrite=True)
     finally:
         out.chmod(stat.S_IWRITE | stat.S_IREAD)
     assert rc == 2
