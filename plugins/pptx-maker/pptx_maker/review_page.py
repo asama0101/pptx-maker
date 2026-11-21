@@ -614,12 +614,12 @@ def _data_uri(work: Path, ref: str, cache: dict[str, str]) -> str:
 
 
 def _embed_images(work: Path, nn: str, key: str, frag: str, cache: dict[str, str], errors: list[str]) -> str:
-    """断片の相対パスの画像を data URI に置き換える。data:・http(s):・file:・#id はそのまま。"""
+    """断片の相対パスの画像を data URI に置き換える。data:・#id はそのまま（外部 URL・file: は collect が先に止める）。"""
 
     def attr(m: re.Match, tag: str) -> str:
         name, eq, q, ref = m.groups()
         is_img = tag.lower() == "img"
-        if (name.lower() == "src") != is_img or re.match(r"(data|https?|file):|#", ref, re.IGNORECASE):
+        if (name.lower() == "src") != is_img or re.match(r"data:|#", ref, re.IGNORECASE):
             return m.group(0)
         try:
             return f"{name}{eq}{q}{_data_uri(work, ref, cache)}{q}"
@@ -747,7 +747,7 @@ def build(work: Path, measure: bool = True, notes: list[str] | None = None) -> P
         "STAMP": choices.stamp(work),
     }
     # 1 回で置き換える（断片や CSS の中の __BASE__ などを、もう一度置き換えない）
-    html = _PLACEHOLDER.sub(lambda m: subs[m.group(1)], _PAGE)
+    html = paths.CSP_REVIEW + _PLACEHOLDER.sub(lambda m: subs[m.group(1)], _PAGE)
     size = len(html.encode("utf-8"))
     if size > MAX_PAGE_BYTES:
         images = sum(len(u) for u in _DATA_URI.findall(html))  # 同じ画像も、ページに入った回数だけ数える

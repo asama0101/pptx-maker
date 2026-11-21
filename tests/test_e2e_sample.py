@@ -80,6 +80,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
     ch = write_choices(tmp_path / "ch1", {"01": "R1", "02": "R2", "03": "R1"})
     assert run("finalize", str(base), "--choices", str(ch))[0] == 0
     final = read(work / "final.html")
+    assert "Content-Security-Policy" in final  # CSP 下でもグラフ・測定・build が通る（以下）
     assert read(comp / "tables" / "actions.html") in final
     assert read(comp / "tables" / "options.html") not in final
 

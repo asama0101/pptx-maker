@@ -163,7 +163,7 @@ def _as_page(html: Path, work: Path):
         return
     base = work.resolve().as_uri() + "/"  # 断片の中の相対パス（icons/・material/）も作業フォルダから引く
     wrapped = (
-        f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><base href="{base}">'
+        f'<!doctype html><html lang="ja"><head><meta charset="utf-8">{paths.CSP_FILE}<base href="{base}">'
         '<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="base.css">'
         '<script src="chart-preview.js" defer></script></head><body>' + text + "</body></html>"
     )

@@ -291,7 +291,7 @@ def test_html_comment_open_in_fragment_does_not_break_page(tmp_path):
 
     # 後ろに --> があると壊れ方が隠れるので、HTML のコメントを持たない断片だけにする
     slides = {
-        "01-R1.html": '<section class="slide"><div class="pp-text">x<!--<script>y</div></section>',
+        "01-R1.html": '<section class="slide"><div class="pp-text">x<!--<b>y</div></section>',
         "01-R2.html": '<section class="slide"><div class="pp-text">w</div></section>',
         "02-R1.html": '<section class="slide"><div class="pp-text">z</div></section>',
         "02-R2.html": '<section class="slide"><div class="pp-text">v</div></section>',

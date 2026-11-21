@@ -62,6 +62,16 @@ def open_browser(browser=None):
             b.close()
 
 
+def _only_local(route) -> None:
+    """測定中のページが外へ通信・遷移しないようにする（CSP は meta refresh やリンクの遷移を止めない）。
+    file:・data:・about:・blob: 以外（http(s) の遷移・画像・フォントなど）は中断する。
+    review.html はユーザーのブラウザで開くので、これは効かない（candidates.unsafe_parts の検査が頼り）。"""
+    if route.request.url.split(":", 1)[0].lower() in ("file", "data", "about", "blob"):
+        route.continue_()
+    else:
+        route.abort()
+
+
 def measure(html: Path, raster_dir: Path | None = None, browser=None) -> list[dict]:
     """raster_dir を渡すと、絵（pp-picture）を PNG にして raster_dir に置き、モデルの `src` に入れる（build 用）。"""
     js = (Path(__file__).parent / "measure.js").read_text(encoding="utf-8")
@@ -70,6 +80,7 @@ def measure(html: Path, raster_dir: Path | None = None, browser=None) -> list[di
         page = b.new_page(
             viewport={"width": 1280, "height": 720}, device_scale_factor=RASTER_SCALE if raster_dir else 1
         )
+        page.route("**/*", _only_local)
         try:
             page.goto(html.as_uri())
             page.evaluate("document.fonts.ready.then(() => true)")

@@ -6,7 +6,7 @@ from pathlib import Path
 from . import candidates, choices, consulting, paths, script_lint
 
 HEAD = (
-    '<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>{title}</title>'
+    '<!doctype html><html lang="ja"><head><meta charset="utf-8">' + paths.CSP_FILE + "<title>{title}</title>"
     '<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="base.css">'
     '<script src="chart-preview.js" defer></script></head><body>'
 )

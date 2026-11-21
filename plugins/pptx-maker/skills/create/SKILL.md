@@ -69,6 +69,7 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 - **全ページ（表紙・区切り・裏表紙も）で、候補の数だけ** `NN-R1.html`〜`NN-Rn.html` を書く。`Rk` は方向 k の構図・密度・主役の種類・余白・視線で書く。同じ方向の案どうしは傾向をそろえ、ページごとの構図は設計する（design-directions.md の 4 章。見本をなぞらない）。候補の行がない作業フォルダ（旧形式）は、従来どおり全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案）。
 - 方向どうしは色でなく、**構図**（旧形式は主役の種類）を変える。`data-variant="案の特徴"`。指針は [references/html-rules.md](${CLAUDE_PLUGIN_ROOT}/references/html-rules.md) の「自由設計（R）の指針」。
 - `${CLAUDE_PLUGIN_ROOT}/assets/components/` の断片は**見本**。写してもよいが、なぞらない（[references/components.md](${CLAUDE_PLUGIN_ROOT}/references/components.md)・[references/patterns.md](${CLAUDE_PLUGIN_ROOT}/references/patterns.md)）。グラフだけは `data-chart` で書く（ネイティブのグラフにするため）。
+- 断片に `<script>`・`<iframe>`・`<meta>`・`<title>`・`<textarea>`・`<style>` 内の `<`・CDATA・`<!-->` 型のコメント・CSS のバックスラッシュと `image(`・`expression(`・`on*=` 属性・外部 URL・`javascript:`・`mailto:`・`tel:` は書かない。コメントや本文でも `<meta` などは書けない（`review-page`・`choices-import`・`finalize` がエラーで止める。当たった語はメッセージに出る）。画像・URL は作業フォルダの相対パスと `#id`、`data:image/` だけ。細則は [references/html-rules.md](${CLAUDE_PLUGIN_ROOT}/references/html-rules.md)。
 - **絵**（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈など）: 案の中に `pp-picture` で描く。書き方・5 種の作法・素材の読み方・聞くことは [references/picture-craft.md](${CLAUDE_PLUGIN_ROOT}/references/picture-craft.md)。素材が薄いときは、描く前に `AskUserQuestion` で聞く。図 1 枚だけの依頼も、表紙と絵のページの 2 枚で、この流れで作る。
 
 ## 4. HTML の書き方
