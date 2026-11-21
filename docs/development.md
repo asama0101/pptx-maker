@@ -55,8 +55,8 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
 | コマンド | 内容 |
 |---|---|
 | `doctor` / `setup --yes` | 環境の診断 / 仮想環境と chromium の導入（承認後） |
-| `init <元データ> [--template …] [--footer …] [--force]` | 作業フォルダを作る |
-| `template-import / template-list / template-remove` | 利用者のテンプレートの登録・一覧・削除（使うレイアウトは表紙・本文・裏表紙） |
+| `init <元データ> [--template …] [--footer …]` | 作業フォルダを作る。空でないときは終了コード 2。上書きは同じ引数の `init-overwrite` |
+| `template-import / template-overwrite / template-list / template-remove` | 利用者のテンプレートの登録・一覧・削除（使うレイアウトは表紙・本文・裏表紙） |
 | `pptx-extract <pptx>` | PPTX を読んで Markdown を標準出力に出す（題・本文・表・グラフの数値。ノート・非表示スライド・画像・SmartArt は読まない。読めない PPTX は終了コード 2） |
 | `lint-script <script.md>` | 原稿の書式・題・ヘッドメッセージを検査する |
 | `review-page <元データ>` | 案を選ぶ `review.html` を作る（ローカルのブラウザで開く。ローカルの画像は data URI に埋め込む。12 MiB まで。`--no-measure` で案を測らない） |
@@ -66,7 +66,7 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
 | `rule-review-import` / `rule-review-list` / `rule-review-clear` | AI 判定を作業フォルダの `rule-review.json` に記録する / 記録を見る / 消す（`--rule`・`--page` で絞る） |
 | `finalize <元データ> --choices <dir>` | 全ページ承認済みの選択結果から `final.html` を作る（`<dir>` は `choices/` の親）。有効な AI ルールの判定が未記録（`pending`）だと、承認が済んでいても終了コード 2 で止まる（`rule-review-import` で記録するか、`/pptx-maker:rules` で無効にする。原稿のスライドに断片がないときも止まる。どちらも `script.md` がなければ検査しない） |
 | `check <final.html>` | 体裁を検査する |
-| `build <元データ> [--footer …] [--out …] [--force]` | PPTX を書き出す。出力先に同名の PPTX があれば `--force` がない限り終了コード 4。検査エラーは終了コード 1、入力の不備は 2 |
+| `build <元データ> [--footer …] [--out …]` | PPTX を書き出す。出力先に同名の PPTX があれば終了コード 4。上書きは同じ引数の `build-overwrite`。検査エラーは終了コード 1、入力の不備は 2 |
 | `clean <元データ>` | 一時フォルダの確認用の画像を消す |
 
 ## 自動検査
@@ -86,7 +86,7 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
 
 `build` が `check_model`（測ったモデル）と `check_pptx`（できた PPTX）で検査する。ルールは `overflow`・`overlap`・`textLost`・`keepout`・`fontMin` と、`outOfSlide`・`shapeKind`・`pptxBounds`・`pptxFontMin`（`references/check-rules.md`）。不正な `data-chart` は `build` が `エラー:` で止める。`lint-script` は原稿の書式と題（20 字以内の名詞句）、ヘッドメッセージの規則、論点の個数を検査する。利用者が書くファイルは UTF-8（BOM 付きも可）。
 
-古い作業フォルダは `base.css`・`theme.css`・`chart-preview.js` が `init` 時の写しなので、プラグイン側の更新を反映するには `init --force` をやり直す。v1.x の作業フォルダ（`answers-*.md`・`-d2` の断片・`NN-R.html` など）は未対応で、`finalize`・`review-page` が旧い名前を挙げて止まる。
+古い作業フォルダは `base.css`・`theme.css`・`chart-preview.js` が `init` 時の写しなので、プラグイン側の更新を反映するには `init-overwrite` をやり直す。v1.x の作業フォルダ（`answers-*.md`・`-d2` の断片・`NN-R.html` など）は未対応で、`finalize`・`review-page` が旧い名前を挙げて止まる。
 
 ## テスト
 

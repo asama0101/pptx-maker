@@ -131,17 +131,17 @@ def test_同じ名前があれば終了コード4で止まり_force_で置き換
 
     rc, _, err = run(capsys, "template-import", str(new), "--name", "標準")
     assert rc == 4
-    assert "--force" in err
+    assert "template-overwrite" in err
     assert (home / "templates" / "標準.pptx").read_bytes() == kept  # 触っていない
 
-    rc, _, _ = run(capsys, "template-import", str(new), "--name", "標準", "--force")
+    rc, _, _ = run(capsys, "template-overwrite", str(new), "--name", "標準")
     assert rc == 0
     assert (home / "templates" / "標準.pptx").read_bytes() == new.read_bytes()
 
 
 def test_force_で形式が変わっても_同じ名前は1つだけ残る(home, tmp_path, pkg, capsys):
     run(capsys, "template-import", str(make_pptx(tmp_path / "t.pptx")), "--name", "標準")
-    run(capsys, "template-import", str(pkg / "assets" / "template" / "standard.potx"), "--name", "標準", "--force")
+    run(capsys, "template-overwrite", str(pkg / "assets" / "template" / "standard.potx"), "--name", "標準")
     assert [p.name for p in (home / "templates").iterdir()] == ["標準.potx"]
 
 

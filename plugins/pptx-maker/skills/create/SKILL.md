@@ -28,10 +28,10 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 - 基調色・強調色（強調色は 2 色まで）。**最初には決めない**: 利用者が指定したときだけ設計図に書き、なければテンプレートの色（それもなければ既定）で進める。配色は、案の選択ページの「配色」で、全ページの案の色を見ながら変えられる（5 章）。フッターのコピーライト（`--footer`）。
 - テンプレート: `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" template-list` を見せて選んでもらい、選ばれた項目の `path` を `init --template` に渡す（登録は `/pptx-maker:template`）。使うのは表紙・本文・裏表紙のレイアウトだけ。フォントは変わらない。配色は、設計図に色を書かなければテンプレートの色に従う（`init` の結果の `template_accents` が、その色。設計図に書く色の参考にする）。
 
-`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" init "<元データ>" [--template "<path>"] [--footer "<文言>"] [--force]`
+`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" init "<元データ>" [--template "<path>"] [--footer "<文言>"]`
 - 入力は形式ごとに読む（PPTX は `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" pptx-extract "<pptx>"` が標準出力に出す Markdown で、題・本文・表・グラフの数値が入り、ノート・非表示スライド・画像・SmartArt は入らない。読めない PPTX は終了コード 2 で、パスワード付きは利用者に外してもらう。Excel は `anthropic-skills:xlsx`、PDF は `anthropic-skills:pdf`。文章・テキストはそのまま）。複数あっても `<元データ>/input.md` の 1 つに、省かずにまとめる。出典（ファイル名と、ページ・シートの位置）を付ける。
 - 入力が PPTX のとき、図や表は、文字と数値から描き直すのを基本とする。画像のまま持ち込むのは、設計図に図ごとに書いたときだけ。
-- 空でないフォルダは終了コード 2。**中身を見せて承認を得たときだけ `--force`**（ファイルは消さない。渡さない設定は前の値を残す）。`notes` を伝え、`slides/` に残る前の案は確かめてから消す。
+- 空でないフォルダは終了コード 2。中身を見せて利用者の承認を得たあとだけ、上書き版の `init-overwrite`（引数は `init` と同じ。ファイルは消さない。渡さない設定は前の値を残す）を実行する。実行すると権限の確認が出るが、出なくても（許可済みでも）、チャットで承認を得る前には実行しない。`notes` を伝え、`slides/` に残る前の案は確かめてから消す。
 - テンプレートを指定したら、`layout_map`（表紙・本文・裏表紙に当てたレイアウト）を表で見せる。
 
 ## 2. 設計図と原稿
@@ -125,10 +125,10 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 1. 承認済みの案を 1 つの `final.html` にまとめる（`choices/` を読み、`final.html` を書く。`--choices` には `choices/` の親フォルダを渡す）。
    `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" finalize "<元データ>" --choices "<元データ>"`
    未承認のページ・原稿にあるのに断片がないスライド・AI 判定が済んでいないルールがあると終了コード 2 で全件を出すので、5 章へ戻るか、断片を書くか、4.1 の判定を記録する。
-2. `final.html` を測って検査し、PPTX を書く（`<出力先>/<成果物名>.pptx` を書く。`--force` は同名の PPTX を上書きする）。
-   `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" build "<元データ>" [--footer "<文言>"] [--out "<path>.pptx"] [--force]`
+2. `final.html` を測って検査し、PPTX を書く（`<出力先>/<成果物名>.pptx` を書く。`build-overwrite` は同名の PPTX を上書きする）。
+   `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" build "<元データ>" [--footer "<文言>"] [--out "<path>.pptx"]`
    出力は `ok`・`violations`・`pptx`・`previews`・`removed`・`notes`。
-   - 終了コード 4: PPTX が既にある。利用者に伝え、`--force`（上書き）か `--out`（別名）を選んでもらう。
+   - 終了コード 4: PPTX が既にある。利用者に伝え、`build-overwrite`（上書き）か `--out`（別名）を選んでもらう。`build-overwrite`（引数は `build` と同じ）は、承認を得たあとだけ実行する。実行すると権限の確認が出るが、出なくても（許可済みでも）、チャットで承認を得る前には実行しない。
    - 終了コード 1: 検査違反（色の `colorRange`・`colorNeon`・`colorContrast` を含む）。該当ページの断片の配置・サイズだけを直し、選択を読み直して `finalize` → `build`。案は選び直させない。文言や構成を変えないと直らないときだけ利用者に確かめる。直して再 build するのは 3 回まで。超えたら違反の一覧を示して、利用者に確かめる。直し方は [references/check-rules.md](${CLAUDE_PLUGIN_ROOT}/references/check-rules.md)。
    - 終了コード 2（`エラー:`）: 不正な `data-chart` など。断片を直してやり直す。「ブラウザでの測定に失敗しました」（タイムアウトなど）は、重い SVG など断片の内容を疑う。
    - 終了コード 3 で「ブラウザを起動できません」: Chromium がない・壊れている。0 章の `doctor` で確かめ、利用者の承認後に `setup --yes`。

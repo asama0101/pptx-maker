@@ -240,7 +240,7 @@ def cmd_build(args) -> int:
     if out.exists() and not args.force:
         print(
             f"エラー: {out} は既に存在します。"
-            "上書きしてよければ --force、別の名前で出すなら --out <パス> を付けてください。",
+            "上書きしてよければ build-overwrite、別の名前で出すなら --out <パス> を付けてください。",
             file=sys.stderr,
         )
         return 4
@@ -536,26 +536,47 @@ def entry(argv: list[str]) -> int:
         return 2
 
 
-def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="pptx-maker")
-    ap.add_argument("--version", action="version", version=f"pptx-maker {__version__}")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
-    p = sub.add_parser("init")
+def _init_args(p) -> None:
     p.add_argument("workdir")
     p.add_argument("--template", default=None, help="利用者の .potx / .pptx")
     p.add_argument(
         "--footer",
         default=None,
-        help='左下に出すコピーライトの文字列（例: "© 2026 〇〇"）。省略すると空欄（--force なら既存の値を残す）',
+        help='左下に出すコピーライトの文字列（例: "© 2026 〇〇"）。省略すると空欄（init-overwrite なら既存の値を残す）',
     )
-    p.add_argument("--force", action="store_true")
-    p.set_defaults(fn=cmd_init)
-    p = sub.add_parser("template-import", help="利用者のテンプレート（.potx / .pptx）を、名前を付けて置き場に登録する")
+
+
+def _template_import_args(p) -> None:
     p.add_argument("path")
     p.add_argument("--name", default=None, help="登録名。省略するとファイル名（拡張子なし）")
-    p.add_argument("--force", action="store_true", help="同じ名前があれば置き換える")
-    p.set_defaults(fn=cmd_template_import)
+
+
+def _build_args(p) -> None:
+    p.add_argument("workdir")
+    p.add_argument("--footer", default=None)
+    p.add_argument("--out", default=None, help="PPTX の出力先（省略すると <出力先>/<成果物名>.pptx）")
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="pptx-maker")
+    ap.add_argument("--version", action="version", version=f"pptx-maker {__version__}")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
+    # 上書き版は別のサブコマンド（権限の許可リストに入れない）。引数は通常版と同じ
+    p = sub.add_parser("init")
+    _init_args(p)
+    p.set_defaults(fn=cmd_init, force=False)
+    p = sub.add_parser("init-overwrite", help="空でない作業フォルダを上書きして作り直す（利用者の承認のあとだけ）")
+    _init_args(p)
+    p.set_defaults(fn=cmd_init, force=True)
+    p = sub.add_parser("template-import", help="利用者のテンプレート（.potx / .pptx）を、名前を付けて置き場に登録する")
+    _template_import_args(p)
+    p.set_defaults(fn=cmd_template_import, force=False)
+    p = sub.add_parser(
+        "template-overwrite", help="同じ名前の登録済みテンプレートを置き換えて登録する（利用者の承認のあとだけ）"
+    )
+    _template_import_args(p)
+    p.set_defaults(fn=cmd_template_import, force=True)
     sub.add_parser("template-list", help="登録済みのテンプレートの一覧").set_defaults(fn=cmd_template_list)
     p = sub.add_parser("template-remove", help="登録済みのテンプレートを消す（作成済みの成果物には影響しない）")
     p.add_argument("name")
@@ -568,11 +589,11 @@ def main(argv: list[str]) -> int:
     p.add_argument("--workdir", default=None)
     p.set_defaults(fn=cmd_check)
     p = sub.add_parser("build")
-    p.add_argument("workdir")
-    p.add_argument("--footer", default=None)
-    p.add_argument("--out", default=None, help="PPTX の出力先（省略すると <出力先>/<成果物名>.pptx）")
-    p.add_argument("--force", action="store_true", help="既存の PPTX を上書きする")
-    p.set_defaults(fn=cmd_build)
+    _build_args(p)
+    p.set_defaults(fn=cmd_build, force=False)
+    p = sub.add_parser("build-overwrite", help="既存の PPTX を上書きして書き出す（利用者の承認のあとだけ）")
+    _build_args(p)
+    p.set_defaults(fn=cmd_build, force=True)
     p = sub.add_parser("clean")
     p.add_argument("workdir")
     p.set_defaults(fn=cmd_clean)

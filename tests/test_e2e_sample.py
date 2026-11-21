@@ -108,7 +108,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
     rc, _, err = run("build", str(base))
     assert rc == 4, err
     assert pptx.read_bytes() == before
-    assert run("build", str(base), "--force")[0] == 0
+    assert run("build-overwrite", str(base))[0] == 0
     assert run("clean", str(base))[0] == 0
 
     assert [c for c in calls if "soffice" in c.lower() or "libreoffice" in c.lower()] == []

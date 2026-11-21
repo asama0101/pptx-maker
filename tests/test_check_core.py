@@ -112,6 +112,6 @@ def test_existing_pptx_requires_force(tmp_path, capsys):
     capsys.readouterr()
     assert cli.main(["build", str(base), "--out", str(pptx)]) == 4
     err = capsys.readouterr().err
-    assert "--force" in err
+    assert "build-overwrite" in err
     assert "--out" in err
     assert pptx.read_bytes() == b"old"

@@ -321,9 +321,9 @@ def test_html_rules_は_design_directions_を参照し_frontend_design_を呼ば
     assert "frontend-design" not in sec
 
 
-def test_create_は_build_の終了コード4で_force_か_out_を選ばせる():
+def test_create_は_build_の終了コード4で_build_overwrite_か_out_を選ばせる():
     line = next(x for x in skill_text("create").splitlines() if "終了コード 4" in x)
-    assert "--force" in line
+    assert "build-overwrite" in line
     assert "--out" in line
 
 

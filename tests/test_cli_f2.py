@@ -232,7 +232,7 @@ def test_利用者のテンプレートが消えた成果物の_force_は_templa
     (work / paths.read_cfg(work)["template"]).unlink()
     with pytest.raises(ValueError, match="--template"):
         initdir.init(b, force=True)
-    rc, _, err = entry(capsys, "init", str(b), "--force")
+    rc, _, err = entry(capsys, "init-overwrite", str(b))
     assert rc == 2
     assert "--template" in err
 
@@ -328,7 +328,7 @@ def test_出力先がフォルダなら測定の前に終了コード2で止ま�
     d = tmp_path / "outdir"
     d.mkdir()
     capsys.readouterr()
-    rc = cli.main(["build", str(deck_with_final), "--out", str(d), "--force"])
+    rc = cli.main(["build-overwrite", str(deck_with_final), "--out", str(d)])
     cap = capsys.readouterr()
     assert rc == 2
     assert ".pptx" in cap.err

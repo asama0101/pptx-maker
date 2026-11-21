@@ -33,7 +33,7 @@ def import_template(src, name: str | None = None, force: bool = False) -> dict:
     template.analyze(src)  # 16:9・本文のレイアウトなど、使えるかをここで確かめる（失敗は ValueError）
     old = _find(name)
     if old is not None and not force:
-        raise FileExistsError(f"同じ名前のテンプレートがあります: {name}（置き換えるには --force）")
+        raise FileExistsError(f"同じ名前のテンプレートがあります: {name}（置き換えるには template-overwrite）")
     dst_dir = paths.templates_dir()
     dst_dir.mkdir(parents=True, exist_ok=True)
     dst = dst_dir / f"{name}{src.suffix.lower()}"

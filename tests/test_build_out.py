@@ -61,7 +61,7 @@ def no_browser(monkeypatch):
 
 def build(work, out, capsys, force=False):
     """cmd_build を実物のまま呼ぶ。(終了コード, stdout, stderr)。"""
-    argv = ["build", str(work), "--out", str(out)] + (["--force"] if force else [])
+    argv = ["build-overwrite" if force else "build", str(work), "--out", str(out)]
     capsys.readouterr()
     rc = cli.main(argv)
     cap = capsys.readouterr()
@@ -80,7 +80,7 @@ def test_既存の出力先は_force_なしで終了コード4で止まり中身
     out.write_bytes(b"old")
     rc, stdout, err = build(work, out, capsys)
     assert rc == 4
-    assert "--force" in err
+    assert "build-overwrite" in err
     assert out.read_bytes() == b"old"
     assert stdout == ""  # 測定・書き出しまで進んでいない（進めば結果の JSON が出る）
 
@@ -149,7 +149,7 @@ def test_既定と同じパスの_out_が既存なら_force_なしで終了コ�
     out.write_bytes(b"original")
     rc, stdout, err = build(work, out, capsys)
     assert rc == 4
-    assert "--force" in err
+    assert "build-overwrite" in err
     assert "--out" in err
     assert out.read_bytes() == b"original"
     assert stdout == ""

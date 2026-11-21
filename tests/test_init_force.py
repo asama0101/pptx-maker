@@ -46,7 +46,7 @@ def test_forceだけならフッター_テンプレートを保つ(deck):
 
 def test_CLIのforceだけならフッター_テンプレートを保つ(deck):
     base, work, tbytes = deck
-    assert cli.main(["init", str(base), "--force"]) == 0
+    assert cli.main(["init-overwrite", str(base)]) == 0
     after = _cfg(work)
     assert after["footer"] == "© 2026 A"
     assert (work / after["template"]).read_bytes() == tbytes
