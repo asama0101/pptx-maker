@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-labelledby="t" font-family="'BIZ UDPGothic','Yu Gothic','Meiryo',sans-serif">
+<title id="t">資料ができるまでの 7 ステップ</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1F3A5F"/></marker></defs>
+<rect width="800" height="500" fill="#FFFFFF"/>
+<rect x="20" y="30" width="200" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<circle cx="42" cy="54" r="13" fill="#1F3A5F"/>
+<text x="42" y="59" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">1</text>
+<text x="64" y="59" font-size="15" font-weight="700" fill="#1F3A5F">聞く</text>
+<text x="34" y="86" font-size="13" fill="#222222">Claude が素材・成果物名・</text>
+<text x="34" y="106" font-size="13" fill="#222222">テンプレート・フッターと</text>
+<text x="34" y="126" font-size="13" fill="#222222">足りない前提を聞く</text>
+<rect x="300" y="30" width="200" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<circle cx="322" cy="54" r="13" fill="#1F3A5F"/>
+<text x="322" y="59" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">2</text>
+<text x="344" y="59" font-size="15" font-weight="700" fill="#1F3A5F">設計図と原稿</text>
+<text x="314" y="86" font-size="13" fill="#222222">Claude が書く。デザイン</text>
+<text x="314" y="106" font-size="13" fill="#222222">方向はあなたが選ぶ</text>
+<rect x="580" y="30" width="200" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<circle cx="602" cy="54" r="13" fill="#1F3A5F"/>
+<text x="602" y="59" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">3</text>
+<text x="624" y="59" font-size="15" font-weight="700" fill="#1F3A5F">案を作る</text>
+<text x="594" y="86" font-size="13" fill="#222222">Claude が全スライドの</text>
+<text x="594" y="106" font-size="13" fill="#222222">案と選択ページを作る</text>
+<rect x="20" y="205" width="200" height="110" rx="10" fill="#FFFFFF" stroke="#1F3A5F" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="42" cy="229" r="13" fill="#1F3A5F"/>
+<text x="42" y="234" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">4</text>
+<text x="64" y="234" font-size="15" font-weight="700" fill="#1F3A5F">案を選ぶ</text>
+<text x="34" y="261" font-size="13" fill="#222222">あなたが案を選んで承認し、</text>
+<text x="34" y="281" font-size="13" fill="#222222">内容をチャットに貼る</text>
+<rect x="300" y="205" width="200" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<circle cx="322" cy="229" r="13" fill="#1F3A5F"/>
+<text x="322" y="234" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">6</text>
+<text x="344" y="234" font-size="15" font-weight="700" fill="#1F3A5F">PPTX を作る</text>
+<text x="314" y="261" font-size="13" fill="#222222">全スライド承認後に</text>
+<text x="314" y="281" font-size="13" fill="#222222">Claude が検査して</text>
+<text x="314" y="301" font-size="13" fill="#222222">書き出す</text>
+<rect x="580" y="205" width="200" height="110" rx="10" fill="#FFFFFF" stroke="#1F3A5F" stroke-width="2" stroke-dasharray="6 4"/>
+<circle cx="602" cy="229" r="13" fill="#1F3A5F"/>
+<text x="602" y="234" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">7</text>
+<text x="624" y="234" font-size="15" font-weight="700" fill="#1F3A5F">確認する</text>
+<text x="594" y="261" font-size="13" fill="#222222">あなたが PowerPoint で</text>
+<text x="594" y="281" font-size="13" fill="#222222">開いて最終確認する</text>
+<rect x="20" y="365" width="200" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<circle cx="42" cy="389" r="13" fill="#1F3A5F"/>
+<text x="42" y="394" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">5</text>
+<text x="64" y="394" font-size="15" font-weight="700" fill="#1F3A5F">直す</text>
+<text x="34" y="421" font-size="13" fill="#222222">コメントがあるときだけ。</text>
+<text x="34" y="441" font-size="13" fill="#222222">Claude が直し、あなたが</text>
+<text x="34" y="461" font-size="13" fill="#222222">再承認する</text>
+<path d="M220 85 H300" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="260" y="75" text-anchor="middle" font-size="12" fill="#333333">回答</text>
+<path d="M500 85 H580" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="540" y="75" text-anchor="middle" font-size="12" fill="#333333">設計図・原稿</text>
+<path d="M680 140 V172 H120 V205" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="400" y="164" text-anchor="middle" font-size="12" fill="#333333">選択ページ</text>
+<path d="M220 260 H300" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="260" y="238" text-anchor="middle" font-size="12" fill="#333333">全スライド</text>
+<text x="260" y="252" text-anchor="middle" font-size="12" fill="#333333">承認</text>
+<path d="M500 260 H580" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="540" y="250" text-anchor="middle" font-size="12" fill="#333333">PPTX</text>
+<path d="M120 315 V365" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)" marker-start="url(#a)"/>
+<text x="132" y="345" text-anchor="start" font-size="12" fill="#333333">コメントと直した案</text>
+<rect x="330" y="385" width="40" height="22" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="382" y="402" text-anchor="start" font-size="12" fill="#333333">実線の枠: 主に Claude が行う</text>
+<rect x="330" y="427" width="40" height="22" rx="8" fill="#FFFFFF" stroke="#1F3A5F" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="382" y="444" text-anchor="start" font-size="12" fill="#333333">破線の枠: あなたが行う</text>
+</svg>
