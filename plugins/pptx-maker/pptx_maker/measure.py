@@ -2,6 +2,7 @@
 
 from contextlib import contextmanager
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 
 class BrowserLaunchError(RuntimeError):
@@ -65,8 +66,18 @@ def open_browser(browser=None):
 def _only_local(route) -> None:
     """測定中のページが外へ通信・遷移しないようにする（CSP は meta refresh やリンクの遷移を止めない）。
     file:・data:・about:・blob: 以外（http(s) の遷移・画像・フォントなど）は中断する。
+    file: でも、ホスト名つき（file://ホスト/共有）と UNC になる形（file:////ホスト/共有）は中断する
+    （Windows では SMB 接続になり、認証情報が送られうる）。
     review.html はユーザーのブラウザで開くので、これは効かない（candidates.unsafe_parts の検査が頼り）。"""
-    if route.request.url.split(":", 1)[0].lower() in ("file", "data", "about", "blob"):
+    url = route.request.url
+    scheme = url.split(":", 1)[0].lower()
+    if scheme == "file":
+        parts = urlsplit(url)
+        path = unquote(parts.path).replace("\\", "/")
+        if parts.netloc not in ("", "localhost") or path.startswith("//"):
+            route.abort()
+            return
+    if scheme in ("file", "data", "about", "blob"):
         route.continue_()
     else:
         route.abort()

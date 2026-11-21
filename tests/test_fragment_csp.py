@@ -232,3 +232,40 @@ def test_measure_blocks_network_and_navigation(tmp_path):
     finally:
         srv.shutdown()
     assert hits == []
+
+
+class _Route:
+    """Playwright の route の代わり。continue_・abort のどちらが呼ばれたかだけを残す。"""
+
+    def __init__(self, url: str) -> None:
+        self.request = type("R", (), {"url": url})()
+        self.result = ""
+
+    def continue_(self) -> None:
+        self.result = "continue"
+
+    def abort(self) -> None:
+        self.result = "abort"
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        ("file:///C:/work/final.html", "continue"),
+        ("file://localhost/C:/work/theme.css", "continue"),
+        ("data:image/png;base64,AAAA", "continue"),
+        ("about:blank", "continue"),
+        ("file://127.0.0.9/share/x.png", "abort"),
+        ("file://evil.example/share/x.css", "abort"),
+        ("file:////evil.example/share/x.png", "abort"),
+        ("file:///%2F%2Fevil.example/share/x.png", "abort"),
+        ("file:///\\evil.example/share/x.png", "abort"),
+        ("http://127.0.0.1:1/x", "abort"),
+        ("ws://127.0.0.1:1/x", "abort"),
+    ],
+)
+def test_only_local_blocks_unc_and_remote(url, expected):
+    """測定側の遮断は、ホスト名つきの file: と UNC になる形も中断する（SMB で認証情報が送られうる）。"""
+    r = _Route(url)
+    measure._only_local(r)
+    assert r.result == expected
