@@ -49,7 +49,7 @@ def test_旧形式の断片は旧い名前を挙げて終了コード2で止ま�
 
 
 def test_古いキーと回答ファイルは無視して_finalize_と_review_page_が通る(old_work, tmp_path, capsys):
-    ch = write_choices(tmp_path / "ch", {"01": "R1"})
+    ch = write_choices(tmp_path / "ch", {"01": "R1"}, old_work)
     assert _run(capsys, "finalize", str(old_work), "--choices", str(ch))[0] == 0
     assert "ONE" in (old_work / "final.html").read_text(encoding="utf-8")
     assert _run(capsys, "review-page", str(old_work))[0] == 0

@@ -4,7 +4,7 @@
 import json
 
 import pytest
-from pptx_maker import cli, finalize, initdir, paths
+from pptx_maker import candidates, choices, cli, finalize, initdir, paths, rulebook
 
 from tests._flow import copied
 
@@ -18,13 +18,15 @@ def _slides(work, **frags):
         (d / f"{name}.html").write_text(body, encoding="utf-8")
 
 
-def _choice(base, nn, pick="R1", status="approved", comment=""):
+def _choice(work, base, nn, pick="R1", status="approved", comment="", frag=True):
+    """承認済みなら、いまの断片の指紋（frag）も書く。frag=False は旧形式の承認。"""
     d = base / "choices"
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"{nn}.json").write_text(
-        json.dumps({"at": "2026-11-08T00:00:00.000Z", "comment": comment, "pick": pick, "status": status}),
-        encoding="utf-8",
-    )
+    data = {"at": "2026-11-08T00:00:00.000Z", "comment": comment, "pick": pick, "status": status}
+    html = candidates.collect(work).get(nn, {}).get(pick) if isinstance(pick, str) else None
+    if frag and status == "approved" and html is not None:
+        data["frag"] = choices.fragment_hash(html)
+    (d / f"{nn}.json").write_text(json.dumps(data), encoding="utf-8")
 
 
 @pytest.fixture
@@ -46,8 +48,8 @@ def work(tmp_path):
 
 def test_all_approved(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "02", "R2")
-    _choice(ch, "01", "R1")
+    _choice(work, ch, "02", "R2")
+    _choice(work, ch, "01", "R1")
     out = finalize.finalize(work, ch)
     html = out.read_text(encoding="utf-8")
     assert out == work / "final.html"
@@ -58,8 +60,8 @@ def test_all_approved(work, tmp_path):
 
 def test_final_html_has_no_review_markup(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02", "R1")
     finalize.finalize(work, ch)
     html = (work / "final.html").read_text(encoding="utf-8")
     assert "rv-" not in html
@@ -68,8 +70,8 @@ def test_final_html_has_no_review_markup(work, tmp_path):
 
 def test_unapproved_stops(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02", "R1", status="saved")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02", "R1", status="saved")
     with pytest.raises(ValueError, match="S02"):
         finalize.finalize(work, ch)
 
@@ -82,31 +84,31 @@ def test_empty_choices_stops(work, tmp_path):
 
 def test_missing_page_stops(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01")
+    _choice(work, ch, "01")
     with pytest.raises(ValueError, match="S02: 選択結果がありません"):
         finalize.finalize(work, ch)
 
 
 def test_pick_missing_candidate(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01", "R3")
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01", "R3")
+    _choice(work, ch, "02", "R1")
     with pytest.raises(ValueError, match="S01.*R3"):
         finalize.finalize(work, ch)
 
 
 def test_pick_none_stops(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01", None)
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01", None)
+    _choice(work, ch, "02", "R1")
     with pytest.raises(ValueError, match="S01"):
         finalize.finalize(work, ch)
 
 
 def test_comment_stops_and_problems_are_collected(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01", "R1", comment="文言を直す")
-    _choice(ch, "02", "R1", status="saved")
+    _choice(work, ch, "01", "R1", comment="文言を直す")
+    _choice(work, ch, "02", "R1", status="saved")
     with pytest.raises(ValueError, match="S01") as e:
         finalize.finalize(work, ch)
     assert "コメント未反映" in str(e.value)
@@ -116,16 +118,16 @@ def test_comment_stops_and_problems_are_collected(work, tmp_path):
 
 def test_cli_choices(work, tmp_path, capsys):
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02", "R1")
     assert cli.main(["finalize", str(work), "--choices", str(ch)]) == 0
     assert "TWO1" in (work / "final.html").read_text(encoding="utf-8")
 
 
 def test_cli_choices_error_exit_2(work, tmp_path, capsys):
     ch = tmp_path / "ch"
-    _choice(ch, "01", status="saved")
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01", status="saved")
+    _choice(work, ch, "02", "R1")
     assert cli.main(["finalize", str(work), "--choices", str(ch)]) == 2
     assert "エラー" in capsys.readouterr().err
 
@@ -139,8 +141,8 @@ def test_choices_なしは作業フォルダに触れず終了コード2(work, c
 
 def test_pick_が文字列でなければ_ValueError_で止まる(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01", pick=["R1"])
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01", pick=["R1"])
+    _choice(work, ch, "02", "R1")
     with pytest.raises(ValueError, match="S01"):
         finalize.finalize(work, ch)
 
@@ -208,8 +210,8 @@ def _ai_reviews(pending):
 def test_AI判定が未実施なら_finalize_は止まる(work, tmp_path):
     (work / "script.md").write_text(_SCRIPT, encoding="utf-8")
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02")
     with pytest.raises(ValueError, match="AI 判定が済んでいません") as e:
         finalize.finalize(work, ch, home=tmp_path / "none")
     assert "R01 全体" in str(e.value)
@@ -221,20 +223,20 @@ def test_cli_AI判定が未実施なら_finalize_は終了コード2で止まる
     monkeypatch.setenv("PPTX_MAKER_HOME", str(tmp_path / "home"))
     (work / "script.md").write_text(_SCRIPT, encoding="utf-8")
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02")
     assert cli.main(["finalize", str(work), "--choices", str(ch)]) == 2
     assert "AI 判定が済んでいません" in capsys.readouterr().err
     assert not (work / "final.html").exists()
 
 
 def test_AI判定を全部記録すれば_finalize_は通る(work, tmp_path):
-    from pptx_maker import consulting, rulebook
+    from pptx_maker import consulting
 
     (work / "script.md").write_text(_SCRIPT, encoding="utf-8")
     ch = tmp_path / "ch"
-    _choice(ch, "01")
-    _choice(ch, "02")
+    _choice(work, ch, "01")
+    _choice(work, ch, "02")
     home = tmp_path / "none"
     rulebook.import_reviews(work, _ai_reviews(consulting.pending_ai(work, home)), home)
     assert consulting.pending_ai(work, home) == []
@@ -249,10 +251,224 @@ def test_script_md_がなければ_AI判定は求めない(work):
 
 def test_原稿にあるスライドの断片がなければ_承認済みでも止まる(work, tmp_path):
     ch = tmp_path / "ch"
-    _choice(ch, "01", "R1")
-    _choice(ch, "02", "R1")
+    _choice(work, ch, "01", "R1")
+    _choice(work, ch, "02", "R1")
     script = "## S01 表紙\n- layout: cover\n\n## S02 本文\n\n## S03 まとめ\n"
     (work / "script.md").write_text(script, encoding="utf-8")
     with pytest.raises(ValueError, match="S03.*断片"):
         finalize.finalize(work, ch)
     assert not (work / "final.html").exists()
+
+
+def test_承認のあとで断片を直すと_finalize_が止まる(work, tmp_path):
+    ch = tmp_path / "ch"
+    _choice(work, ch, "01")
+    _choice(work, ch, "02", "R1")
+    finalize.finalize(work, ch)  # 変えなければ通る
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    with pytest.raises(ValueError, match="S02: 承認のあとで断片が変わっています") as e:
+        finalize.finalize(work, ch)
+    assert "S01" not in str(e.value)
+
+
+def test_旧形式の承認は断片の指紋がなく止まる(work, tmp_path):
+    ch = tmp_path / "ch"
+    _choice(work, ch, "01", frag=False)
+    _choice(work, ch, "02", "R1", frag=False)
+    with pytest.raises(ValueError, match="S01: 古い形式の承認のため、断片の指紋がありません") as e:
+        finalize.finalize(work, ch)
+    assert "S01: 古い形式の承認のため、断片の指紋がありません" in str(e.value)
+    assert "S02: 古い形式の承認のため、断片の指紋がありません" in str(e.value)
+
+
+def _import(work, capsys, pages):
+    f = _paste(work, "p.txt", pages)
+    capsys.readouterr()
+    assert cli.main(["choices-import", str(work), "--file", f]) == 0
+
+
+def _read(work, nn):
+    return json.loads((work / "choices" / f"{nn}.json").read_text(encoding="utf-8"))
+
+
+def test_choices_import_は承認ページだけに_frag_を書く(work, capsys):
+    _import(
+        work,
+        capsys,
+        {
+            "01": {"pick": "R1", "status": "approved", "comment": ""},
+            "02": {"pick": "R2", "status": "saved", "comment": ""},
+        },
+    )
+    assert _read(work, "01")["frag"] == choices.fragment_hash("<section>ONE</section>")
+    assert "frag" not in _read(work, "02")
+
+
+def test_frag_があっても選択ページの_base_と_check_は変わらない(work, capsys):
+    pages = {"01": {"pick": "R1", "status": "approved", "comment": ""}}
+    _import(work, capsys, pages)
+    state = choices.read_state(work)
+    assert "frag" not in state["01"]
+    with_frag = choices.stamp(work)
+    data = _read(work, "01")
+    del data["frag"]
+    (work / "choices" / "01.json").write_text(json.dumps(data), encoding="utf-8")
+    assert choices.stamp(work) == with_frag
+    assert choices.read_state(work) == state
+
+
+def _fr_error(work, capsys, pages, **over):
+    f = _paste(work, "p.txt", pages, **over)
+    capsys.readouterr()
+    assert cli.main(["choices-import", str(work), "--file", f]) == 2
+    assert not (work / "choices").exists() or not list((work / "choices").glob("*.json"))
+    return capsys.readouterr().err
+
+
+def test_断片を直したあとの古いタブの承認は_fr_が古く断られて何も書かれない(work, capsys):
+    stale = choices.fragment_hash("<section>ONE</section>")
+    f = work / "slides" / "01-R1.html"
+    f.write_text("<section>直した</section>", encoding="utf-8")
+    err = _fr_error(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": "", "fr": stale}})
+    assert "01: 古い断片を承認しています" in err
+
+
+def test_承認のページに_fr_がない_json_は断られる(work, capsys):
+    pages = {"01": {"pick": "R1", "status": "approved", "comment": ""}}
+    f = work.parent / "p.txt"
+    f.write_text(  # copied は fr を足すので、fr のない旧形式は手で作る
+        json.dumps(
+            {"pptx-maker-review": 1, "base": choices.stamp(work), "check": choices.checksum(pages), "pages": pages}
+        ),
+        encoding="utf-8",
+    )
+    capsys.readouterr()
+    assert cli.main(["choices-import", str(work), "--file", str(f)]) == 2
+    assert "01: fr がありません" in capsys.readouterr().err
+    assert not (work / "choices").exists() or not list((work / "choices").glob("*.json"))
+
+
+def test_fr_が今の指紋と一致する承認は通り_frag_が書かれる(work, capsys):
+    fr = choices.fragment_hash("<section>ONE2</section>")
+    _import(work, capsys, {"01": {"pick": "R2", "status": "approved", "comment": "", "fr": fr}})
+    assert _read(work, "01")["frag"] == fr
+
+
+def test_saved_のページは_fr_なしで通る(work, capsys):
+    _import(work, capsys, {"01": {"pick": "R1", "status": "saved", "comment": ""}})
+    assert "frag" not in _read(work, "01")
+
+
+def _reviews(work):
+    return {
+        (r["rule"], r["page"]) for r in json.loads((work / "rule-review.json").read_text(encoding="utf-8"))["reviews"]
+    }
+
+
+def test_指紋が変わった再承認だけが_AI_判定を消す(work, capsys):
+    pages = {"01": {"pick": "R1", "status": "approved", "comment": ""}}
+    _import(work, capsys, pages)
+    ok = {"status": "ok", "message": ""}
+    paths.write_json(
+        work / "rule-review.json",
+        {"reviews": [{"rule": "R05", "page": "01", **ok}, {"rule": "R05", "page": "02", **ok}]},
+    )
+    _import(work, capsys, pages)  # 断片が同じ
+    assert _reviews(work) == {("R05", "01"), ("R05", "02")}
+    (work / "slides" / "01-R1.html").write_text("<section>ONE 直した</section>", encoding="utf-8")
+    _import(work, capsys, pages)  # 断片が変わった
+    assert _reviews(work) == {("R05", "02")}
+
+
+def test_新規の承認は_AI_判定を消さない(work, capsys):
+    paths.write_json(
+        work / "rule-review.json", {"reviews": [{"rule": "R05", "page": "01", "status": "ok", "message": ""}]}
+    )
+    _import(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": ""}})
+    assert _reviews(work) == {("R05", "01")}
+
+
+def test_choices_resolve_のあとは_frag_がない(work, capsys):
+    _import(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": ""}})
+    d = _read(work, "01") | {"comment": "直す"}
+    (work / "choices" / "01.json").write_text(json.dumps(d), encoding="utf-8")
+    assert cli.main(["choices-resolve", str(work), "01"]) == 0
+    after = _read(work, "01")
+    assert after["status"] == "saved"
+    assert "frag" not in after
+
+
+def test_固定の入力で_fragment_hash_が決まった値になる():
+    assert choices.fragment_hash("<section>ONE</section>") == "a37d24f5c367"
+
+
+def test_review_page_は指紋の合わない承認を_saved_で埋め込む(work, capsys):
+    from pptx_maker import review_page
+
+    _import(
+        work,
+        capsys,
+        {
+            "01": {"pick": "R1", "status": "approved", "comment": ""},
+            "02": {"pick": "R1", "status": "approved", "comment": ""},
+        },
+    )
+    stamp, disk = choices.stamp(work), choices.read_state(work)
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    state = review_page._embedded_state(work, candidates.collect(work))
+    assert state["01"]["status"] == "approved"
+    assert state["02"]["status"] == "saved"
+    assert choices.read_state(work) == disk
+    assert choices.stamp(work) == stamp
+    review_page.build(work, measure=False)
+    assert '"status": "saved"' in (work / "review.html").read_text(encoding="utf-8")
+
+
+def _paste_one(work, capsys, status="approved", pick="R1"):
+    f = _paste(work, "p.txt", {"01": {"pick": pick, "status": status, "comment": ""}})
+    capsys.readouterr()
+    return f
+
+
+def _seed_review(work):
+    paths.write_json(
+        work / "rule-review.json", {"reviews": [{"rule": "R05", "page": "01", "status": "ok", "message": ""}]}
+    )
+
+
+def test_判定の削除が失敗したら承認は書かれず_貼り直せる(work, capsys, monkeypatch):
+    _import(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": ""}})
+    _seed_review(work)
+    before = _read(work, "01")
+    f = _paste_one(work, capsys, pick="R2")  # 指紋が変わる
+    monkeypatch.setattr(rulebook, "_write_reviews", lambda *a: (_ for _ in ()).throw(OSError("ロック")))
+    assert cli.main(["choices-import", str(work), "--file", f]) == 2
+    assert _read(work, "01") == before
+    monkeypatch.undo()
+    assert cli.main(["choices-import", str(work), "--file", f]) == 0
+    assert _read(work, "01")["pick"] == "R2"
+    assert _reviews(work) == set()
+
+
+@pytest.mark.parametrize("body", ['{"reviews":[1]}', '{"reviews":[{"rule":"R05"}]}'])
+def test_壊れた_rule_review_は_ValueError_で終了コード_2(work, capsys, body):
+    (work / "rule-review.json").write_text(body, encoding="utf-8")
+    with pytest.raises(ValueError, match="壊れています"):
+        rulebook.read_reviews(work)
+    f = _paste_one(work, capsys)
+    assert cli.main(["choices-import", str(work), "--file", f]) == 2
+    assert not (work / "choices" / "01.json").exists()
+
+
+def test_承認から_saved_に戻しても判定は消えない(work, capsys):
+    _import(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": ""}})
+    _seed_review(work)
+    _import(work, capsys, {"01": {"pick": "R1", "status": "saved", "comment": ""}})
+    assert _reviews(work) == {("R05", "01")}
+
+
+def test_pick_だけ変えた承認は判定を消す(work, capsys):
+    _import(work, capsys, {"01": {"pick": "R1", "status": "approved", "comment": ""}})
+    _seed_review(work)
+    _import(work, capsys, {"01": {"pick": "R2", "status": "approved", "comment": ""}})
+    assert _reviews(work) == set()

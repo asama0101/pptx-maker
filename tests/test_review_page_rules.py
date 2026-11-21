@@ -6,7 +6,7 @@ import re
 from pathlib import Path
 
 import pytest
-from pptx_maker import choices, initdir, paths, review_page
+from pptx_maker import candidates, choices, initdir, paths, review_page
 
 from tests._flow import copied
 from tests.test_review_page_render import CLIP, _slides
@@ -101,7 +101,9 @@ def page(tmp_path):
     from playwright.sync_api import sync_playwright
 
     work = _work(tmp_path)
-    choices.import_text(work, copied(work, {"03": {"pick": "R1", "status": "approved", "comment": ""}}))
+    choices.import_text(
+        work, copied(work, {"03": {"pick": "R1", "status": "approved", "comment": ""}}), cands=candidates.collect(work)
+    )
     review_page.build(work, measure=False)
     with sync_playwright() as p:
         pg = p.chromium.launch().new_page()
@@ -187,7 +189,12 @@ def test_badges_and_page_rules_fix_button_adds_comment_only(page):
     assert after.keys() == before.keys()
     assert after["base"] == before["base"]
     assert after["pages"]["02"]["comment"] == ta  # 形式は同じ。コメント欄に文字が入るだけ
-    assert after["pages"]["03"] == before["pages"]["03"] == {"pick": "R1", "status": "approved", "comment": ""}
+    assert after["pages"]["03"] == before["pages"]["03"]
+    assert {k: v for k, v in before["pages"]["03"].items() if k != "fr"} == {
+        "pick": "R1",
+        "status": "approved",
+        "comment": "",
+    }
     assert page.is_disabled("#pg-02 button[data-act='approve']")  # コメントがあると承認できない
     assert after["check"] == choices.checksum(after["pages"])  # 取り込みが受け付ける検査値
 

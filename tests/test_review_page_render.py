@@ -5,7 +5,7 @@
 import json
 
 import pytest
-from pptx_maker import choices, initdir, paths, review_page
+from pptx_maker import candidates, choices, initdir, paths, review_page
 
 from tests._flow import copied
 from tests._paths import PKG
@@ -39,7 +39,7 @@ def _open(p, tmp_path, init_script, slides, state=None):
     for name, text in slides.items():
         (s / name).write_text(text, encoding="utf-8")
     if state:
-        choices.import_text(work, copied(work, state))
+        choices.import_text(work, copied(work, state), cands=candidates.collect(work))
     review_page.build(work)
     pg = p.chromium.launch().new_page()
     errors = []
@@ -201,9 +201,10 @@ def test_share_copies_choices_and_comments(page):
     data = _share(pg)
     assert data["pptx-maker-review"] == 1
     assert data["pages"] == {
-        "01": {"pick": "R1", "status": "approved", "comment": ""},
+        "01": {"pick": "R1", "status": "approved", "comment": "", "fr": data["pages"]["01"]["fr"]},
         "03": {"pick": "R2", "status": "saved", "comment": "直す"},
     }
+    assert data["pages"]["01"]["fr"] == choices.fragment_hash(candidates.collect(pg.work)["01"]["R1"])
     assert "コピーしました" in pg.text_content("#st")
     assert pg.is_hidden("#out")
 
@@ -330,6 +331,50 @@ def test_page_from_before_rebuild_is_rejected(page):
     choices.resolve(pg.work, ["03"])  # 直して、ページを作り直した
     with pytest.raises(ValueError, match="古いページ"):
         choices.import_text(pg.work, old)
+
+
+def test_approved_share_carries_fr_and_import_succeeds(page):
+    """承認のページだけ、見た断片の指紋 fr が入る。check が合い、choices-import が通って frag が書かれる。"""
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R2']")
+    pg.click("#pg-01 button[data-act='approve']")
+    pg.click("#pg-03 .rvthumb[data-k='R2']")  # 承認前（saved）
+    data = _share(pg)
+    cands = candidates.collect(pg.work)
+    assert data["pages"]["01"]["fr"] == choices.fragment_hash(cands["01"]["R2"])
+    assert "fr" not in data["pages"]["03"]
+    assert data["check"] == choices.checksum(data["pages"])
+    choices.import_text(pg.work, json.dumps(data), cands=cands)
+    assert choices.frag_of(pg.work, "01") == data["pages"]["01"]["fr"]
+
+
+def test_repick_after_approval_drops_fr(page):
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R1']")
+    pg.click("#pg-01 button[data-act='approve']")
+    pg.click("#pg-01 .rvthumb[data-k='R2']")
+    assert "fr" not in _share(pg)["pages"]["01"]
+
+
+def test_edited_fragment_turns_restored_approval_into_saved(page):
+    """断片だけ直して review-page をやり直すと、同じ localStorage の承認は saved で出る。直さないページは承認のまま。"""
+    pg, _ = page
+    for nn in ("01", "03"):
+        pg.click(f"#pg-{nn} .rvthumb[data-k='R1']")
+        pg.click(f"#pg-{nn} button[data-act='approve']")
+    pg.reload()  # 承認が localStorage に保存された
+    pg.wait_for_function("document.querySelectorAll('.rvh').length === 9")
+    f = pg.work / "slides" / "01-R1.html"
+    f.write_text(f.read_text(encoding="utf-8") + "<!-- 直した -->", encoding="utf-8")
+    review_page.build(pg.work)  # choices/ は変わらないので、指紋（localStorage のキー）も同じ
+    pg.reload()
+    pg.wait_for_function("document.querySelectorAll('.rvh').length === 9")
+    assert pg.text_content("#pg-01 .rvbd") != "承認済み"
+    assert pg.text_content("#pg-03 .rvbd") == "承認済み"
+    pages = _share(pg)["pages"]
+    assert pages["01"]["status"] == "saved"
+    assert "fr" not in pages["01"]
+    assert pages["03"]["status"] == "approved"
 
 
 def test_state_survives_reload(page):

@@ -33,7 +33,7 @@ _MIME = {
 _IMG_TAG = re.compile(r"<(img|image)\b(?:[^>\x22']|\x22[^\x22]*\x22|'[^']*')*>", re.IGNORECASE)
 _DATA_URI = re.compile(r"data:[\w.+/-]+;base64,[A-Za-z0-9+/=]+")
 _VARIANT = re.compile(r"\bdata-variant\s*=\s*\x22([^\x22]*)\x22")
-_PLACEHOLDER = re.compile(r"__(THEME|DATA|RULES|COLORS|DIRS|CHART|BASE|STATE|STAMP)__")
+_PLACEHOLDER = re.compile(r"__(THEME|DATA|RULES|COLORS|DIRS|CHART|BASE|STATE|FR|STAMP)__")
 # shadow root には body がないので、スライドの文字の書体と色は :host から継承させる
 _HOST_CSS = (
     ":host{font-family:'BIZ UDPGothic','BIZ UDPゴシック','BIZ UDGothic','Yu Gothic','Meiryo',sans-serif;"
@@ -165,6 +165,7 @@ label.rv-hc input { margin-top:4px; }
 <script>
 var BASE = __BASE__;
 var INIT = __STATE__;
+var FR = __FR__;  // 各スライド・各案の断片の指紋（choices.fragment_hash）。承認が、見た断片に結びつくように、承認に持たせる
 var STAMP = "__STAMP__";
 (function () {
 var PAGES = JSON.parse(document.getElementById("data").textContent);
@@ -189,8 +190,10 @@ PAGES.forEach(function (p) {
     pick: had ? i.pick : (ks.length === 1 ? ks[0] : null),
     status: had && (i.status === "approved" || i.status === "saved") ? i.status : null,
     comment: typeof i.comment === "string" ? i.comment : "",
-    checks: cleanChecks(i.checks)
+    checks: cleanChecks(i.checks),
+    fr: null
   };
+  if (S[p[0]].status === "approved") S[p[0]].fr = (FR[p[0]] || {})[S[p[0]].pick] || null;  // 埋め込み状態の承認は、指紋が今と合うものだけ（_embedded_state）
 });
 // 選んだ内容はこのブラウザに自動で残す（誤って閉じても戻る）。ページが作り直されると指紋が変わり、使わない
 var KEY = "pptx-maker-review:" + STAMP;
@@ -198,7 +201,11 @@ try {
   var sv = JSON.parse(localStorage.getItem(KEY) || "null") || {};
   order.forEach(function (nn) {
     var x = sv[nn];
-    if (x && (x.pick === null || P[nn].keys.indexOf(x.pick) >= 0) && typeof x.comment === "string" && (x.status === "approved" || x.status === "saved" || x.status === null)) S[nn] = {pick: x.pick, status: x.status, comment: x.comment, checks: cleanChecks(x.checks)};
+    if (x && (x.pick === null || P[nn].keys.indexOf(x.pick) >= 0) && typeof x.comment === "string" && (x.status === "approved" || x.status === "saved" || x.status === null)) {
+      var fr = x.pick === null ? null : (FR[nn] || {})[x.pick] || null;
+      // 承認は、見た断片の指紋 fr が今の断片と同じときだけ復元する（断片が直されていたら saved に落とす）
+      S[nn] = {pick: x.pick, status: x.status === "approved" && x.fr !== fr ? "saved" : x.status, comment: x.comment, checks: cleanChecks(x.checks), fr: x.status === "approved" && x.fr === fr ? fr : null};
+    }
   });
 } catch (e) {}
 var DIR = DIRS ? (DIRS.current || "R1") : null, DIRSET = false;  // 全体の方向。利用者が押したとき（DIRSET）か、設計図の現在の方向と違うときだけ「Claude に渡す」に入れる
@@ -280,7 +287,7 @@ function setBig(nn) {
   flush();
 }
 // 選び直し・コメントは承認をやり直しにする（承認は「今見えている案とコメントなし」への承認）
-function touch(nn) { if (S[nn].status === "approved") S[nn].status = "saved"; $("st").textContent = ""; }
+function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; }
 function unchecked(nn) { return BODY[nn] ? HUM.filter(function (x) { return !S[nn].checks[x.rule]; }) : []; }
 function humanLeft() { return order.reduce(function (a, n) { return a + unchecked(n).length; }, 0); }
 var nav = $("nav"), main = $("pages");
@@ -312,7 +319,7 @@ order.forEach(function (nn) {
   var undo = h("button", {class: "rvlnk", type: "button", "data-act": "undo", text: "承認を取り消す"});
   var note = h("div", {class: "rvnote"});
   ta.addEventListener("input", function () { S[nn].comment = ta.value; touch(nn); refresh(); });
-  ok.addEventListener("click", function () { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; WARN[nn] = true; $("st").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
+  ok.addEventListener("click", function () { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; $("st").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
   undo.addEventListener("click", function () { S[nn].status = "saved"; WARN[nn] = false; $("st").textContent = ""; refresh(); });
   var human = BODY[nn] && HUM.length ? humanBox(nn) : null;
   var hwarn = h("div", {class: "rv-hwarn", role: "alert"}), hdone = h("div", {class: "rv-hdone"});
@@ -561,7 +568,10 @@ function payload() {
   var pages = {};
   order.forEach(function (nn) {
     var s = S[nn];
-    if (s.pick || s.status || s.comment.trim() || INIT[nn]) pages[nn] = {pick: s.pick, status: s.status || "saved", comment: s.comment.trim()};
+    if (s.pick || s.status || s.comment.trim() || INIT[nn]) {
+      pages[nn] = {pick: s.pick, status: s.status || "saved", comment: s.comment.trim()};
+      if (s.status === "approved" && s.fr) pages[nn].fr = s.fr;  // 承認したときに見ていた断片の指紋（承認のページだけ）
+    }
     if (Object.keys(s.checks).length) {  // 人の確認が 1 つでもあるページだけ（なければ従来の形）
       pages[nn] = pages[nn] || {pick: s.pick, status: "saved", comment: ""};
       pages[nn].checks = cleanChecks(s.checks);
@@ -711,6 +721,17 @@ def _dirs_blob(work: Path) -> str:
     return _script_safe(json.dumps({"names": names, "current": key}, ensure_ascii=False))
 
 
+def _embedded_state(work: Path, cands: dict[str, dict[str, str]]) -> dict[str, dict]:
+    """ページに埋め込む選択結果。承認した断片の指紋が今の断片と合わない承認済み（旧形式を含む）は、saved にして出す
+    （利用者が見ていない断片が、承認のまま「Claude に渡す」で通るのを防ぐ。ディスクの choices/ は変えない）。"""
+    state = choices.read_state(work)
+    for nn, s in state.items():
+        html = cands.get(nn, {}).get(s["pick"]) if isinstance(s["pick"], str) else None
+        if s["status"] == "approved" and (html is None or choices.frag_of(work, nn) != choices.fragment_hash(html)):
+            state[nn] = {**s, "status": "saved"}
+    return state
+
+
 def build(work: Path, measure: bool = True, notes: list[str] | None = None) -> Path:
     """`<work>/review.html` を書いて、そのパスを返す。案・派生ファイルが足りなければ ValueError。
     measure=True なら、案を測って R20・R23・R26 の結果を載せる（測れなければ build のままにして、理由を notes に足す）。"""
@@ -743,7 +764,13 @@ def build(work: Path, measure: bool = True, notes: list[str] | None = None) -> P
         "BASE": json.dumps(f"{theme}\n{_asset(work, 'base.css')}\n{_HOST_CSS}", ensure_ascii=False).replace(
             "</", "<\\/"
         ),
-        "STATE": _script_safe(json.dumps(choices.read_state(work), ensure_ascii=False)),
+        "STATE": _script_safe(json.dumps(_embedded_state(work, cands), ensure_ascii=False)),
+        "FR": _script_safe(
+            json.dumps(
+                {nn: {k: choices.fragment_hash(frag) for k, frag in c.items()} for nn, c in cands.items()},
+                ensure_ascii=False,
+            )
+        ),
         "STAMP": choices.stamp(work),
     }
     # 1 回で置き換える（断片や CSS の中の __BASE__ などを、もう一度置き換えない）

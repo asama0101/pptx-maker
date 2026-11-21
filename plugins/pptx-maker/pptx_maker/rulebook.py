@@ -305,6 +305,8 @@ def read_reviews(work) -> list[dict]:
     reviews = data.get("reviews") if isinstance(data, dict) else None
     if not isinstance(reviews, list):
         raise ValueError(f'{f} の形が違います（{{"reviews": [...]}}）')
+    if not all(isinstance(r, dict) and "rule" in r and "page" in r for r in reviews):
+        raise ValueError(f"{f} が壊れています（reviews の各項目は rule と page を持つオブジェクトです）")
     return reviews
 
 

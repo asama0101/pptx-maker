@@ -347,13 +347,14 @@ def cmd_review_page(args) -> int:
 
 
 def cmd_choices_import(args) -> int:
-    from . import candidates, choices, design_colors, directions
+    from . import candidates, choices, design_colors, directions, rulebook
 
     work = paths.resolve_work(args.workdir)
     if code := _no_cfg(work):
         return code
     try:
-        valid = {nn: sorted(c) for nn, c in candidates.collect(work).items()}
+        cands = candidates.collect(work)
+        valid = {nn: sorted(c) for nn, c in cands.items()}
         text = paths.read_text(args.file)
         color = choices.color_of(text)  # 不正な色は、選択を書く前に断る
         key = choices.direction_of(text)
@@ -372,7 +373,29 @@ def cmd_choices_import(args) -> int:
             if direction:
                 directions.set_current(work, direction["name"])
 
-        commented = choices.import_text(work, text, valid, before_write=before_write if color or direction else None)
+        rulebook.read_reviews(work)  # 判定の記録が壊れていれば、選択を書き換える前に止める
+        before = choices.read_state(work)
+
+        def clear_stale(parsed: dict[str, dict]) -> None:
+            # 承認し直しで、承認した断片の指紋が前回（旧形式の None を含む）と変わったページは、AI 判定が古い。
+            # 選択を書く前に消す（ここで失敗すれば選択は書かれず、同じ JSON を貼り直せる）
+            for nn, page in parsed.items():
+                if (
+                    page["status"] == "approved"
+                    and nn in before
+                    and before[nn]["status"] == "approved"
+                    and choices.frag_of(work, nn) != page.get("frag")
+                ):
+                    rulebook.clear_reviews(work, page=nn)
+
+        commented = choices.import_text(
+            work,
+            text,
+            valid,
+            before_write=before_write if color or direction else None,
+            cands=cands,
+            on_parsed=clear_stale,
+        )
     except (OSError, ValueError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 2

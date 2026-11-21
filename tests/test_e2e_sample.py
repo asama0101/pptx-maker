@@ -69,7 +69,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
         ["03", {"R1": read(slides / "03-R1.html"), "R2": read(slides / "03-R2.html")}],
     ]
     # 保存しただけ（承認していない）のページがあると、finalize は止まる
-    ch = write_choices(tmp_path / "ch0", {"01": "R1", "02": "R2", "03": "R1"})
+    ch = write_choices(tmp_path / "ch0", {"01": "R1", "02": "R2", "03": "R1"}, work)
     saved = json.loads(read(ch / "choices" / "02.json")) | {"status": "saved"}
     (ch / "choices" / "02.json").write_text(json.dumps(saved), encoding="utf-8")
     rc, _, err = run("finalize", str(base), "--choices", str(ch))
@@ -77,7 +77,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
     assert "S02" in err
     assert not (work / "final.html").exists()
     # S02 は R2（対応一覧）が選ばれる
-    ch = write_choices(tmp_path / "ch1", {"01": "R1", "02": "R2", "03": "R1"})
+    ch = write_choices(tmp_path / "ch1", {"01": "R1", "02": "R2", "03": "R1"}, work)
     assert run("finalize", str(base), "--choices", str(ch))[0] == 0
     final = read(work / "final.html")
     assert "Content-Security-Policy" in final  # CSP 下でもグラフ・測定・build が通る（以下）
@@ -99,7 +99,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
 
     lifecycle.prune(work)
     # 選び直し: 派生ファイルは finalize が作り直す
-    ch = write_choices(tmp_path / "ch2", {"01": "R1", "02": "R1", "03": "R1"})
+    ch = write_choices(tmp_path / "ch2", {"01": "R1", "02": "R1", "03": "R1"}, work)
     assert run("finalize", str(base), "--choices", str(ch))[0] == 0
     assert (work / "theme.css").exists()
     assert read(comp / "tables" / "options.html") in read(work / "final.html")

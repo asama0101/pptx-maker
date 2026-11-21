@@ -25,11 +25,11 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
   pptx-maker-source/<成果物名>/   元データ: design.md・script.md・slides/・template.json・material/ など
 ```
 
-1. チャットで入力・保存先・成果物名を受け取り、`init` で作業フォルダを作る。
+1. チャットで入力・成果物名を受け取り（出力先は聞かず、常にカレントディレクトリ）、`init` で作業フォルダを作る。
 2. `design.md` → `script.md`（`lint-script`）。人の承認はない。
 3. `slides/` に断片を書く。全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案。主役の種類が違う案）。`assets/components/` の型は見本。
 4. `review-page` が `review.html` を作る。利用者がローカルのブラウザで開き（外へ送らない）、1 ページごとに案を選び、コメントし、承認する。状態はページの中にあり、「Claude に渡す」が選択結果の JSON（`base`＝`choices.stamp`、`check`＝`pages` の FNV-1a）をクリップボードにコピーする。
-5. 利用者がチャットに貼り、Claude が本文をファイルにして `choices-import` で `choices/<NN>.json` にする（`base`・`check` が合わなければ全件エラーで何も書かない）。コメントのあるページは断片だけ直して `choices-resolve` でコメントを空にし（承認済みなら `saved` に戻す。そのページの AI 判定の記録も消えるので判定し直す）、`review-page` をやり直して再承認してもらう。`finalize --choices <作業フォルダ>` は全ページ承認済み・`comment` が空・原稿の全スライドに断片がある・AI 判定が記録済みを確かめて `final.html` を作る。
+5. 利用者がチャットに貼り、Claude が本文をファイルにして `choices-import` で `choices/<NN>.json` にする（`base`・`check` が合わなければ全件エラーで何も書かない）。コメントのあるページは断片だけ直して `choices-resolve` でコメントを空にし（承認済みなら `saved` に戻す。そのページの AI 判定の記録も消えるので判定し直す）、`review-page` をやり直して再承認してもらう。承認し直しで指紋が前回（旧形式の `frag` なしを含む）と変わると、そのページの AI 判定も承認を書く前に消える（`pick` だけの変更や、旧形式を同じ断片で承認し直したときも消える。安全側で、判定し直す手間が出るだけ。承認 → 保存済みでは消えない）。指紋が見るのは選ばれた断片の HTML だけで、画像ファイル・`theme.css`・`base.css`・`icons/`・選ばれなかった案・`script.md`・`final.html` 作成後の変更は検知しない。`collect` の整形（`svgids.uniquify` など）を変えると全ページの指紋が変わり、承認し直しが要る。`review-page` は、指紋が今の断片と合わない承認済みを「保存済み」として埋め込む。選択ページは各案の指紋を埋め込み、「承認」を押したときのページの状態に、見ている案の指紋 `fr` を持たせて、「Claude に渡す」の `pages[nn].fr`（承認のページだけ。`check` に含まれる）に入れる。`choices-import` は、承認のページの `fr` がない・今の断片の指紋と違うときは全件エラーで何も書かない（断片を直したあとの古いタブ・古いページからの承認を断る）。ページの JS は、localStorage から復元した承認の `fr` が今の指紋と違えば「保存済み」に落とす。承認 → 保存済み → 再承認では AI 判定が古いまま残ることがあるので、断片を直したら `rule-review-clear` で該当ページの判定を消してから判定し直す。`finalize --choices <作業フォルダ>` は全ページ承認済み・`comment` が空・原稿の全スライドに断片がある・AI 判定が記録済み・承認した断片の指紋（`choices-import` が承認ページに `frag` として書く）が今の断片と同じことを確かめて `final.html` を作る。
 6. `build` が測定 → 検査 → PPTX の書き出し → 再検査。
 7. 直しは PowerPoint で行う。構成を大きく変えるときは最初から作り直す。
 
@@ -64,7 +64,7 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
 | `rule list [--kind …] [--all]` / `rule apply --file ops.json [--dry-run]` | 有効なルールの一覧 / 追加・編集・無効化などの適用（全部検証してから書く。保存先は置き場の `rules/custom.json`。対話は `/pptx-maker:rules`） |
 | `rule-report <元データ>` | 鉄板ルールの検査結果を JSON で出す |
 | `rule-review-import` / `rule-review-list` / `rule-review-clear` | AI 判定を作業フォルダの `rule-review.json` に記録する / 記録を見る / 消す（`--rule`・`--page` で絞る） |
-| `finalize <元データ> --choices <dir>` | 全ページ承認済みの選択結果から `final.html` を作る（`<dir>` は `choices/` の親）。有効な AI ルールの判定が未記録（`pending`）だと、承認が済んでいても終了コード 2 で止まる（`rule-review-import` で記録するか、`/pptx-maker:rules` で無効にする。原稿のスライドに断片がないときも止まる。どちらも `script.md` がなければ検査しない） |
+| `finalize <元データ> --choices <dir>` | 全ページ承認済みの選択結果から `final.html` を作る（`<dir>` は `choices/` の親）。有効な AI ルールの判定が未記録（`pending`）だと、承認が済んでいても終了コード 2 で止まる（`rule-review-import` で記録するか、`/pptx-maker:rules` で無効にする。原稿のスライドに断片がないときも止まる。承認のあとで断片が変わったときと、承認の記録に断片の指紋がない旧形式のときも止まるので、`review-page` をやり直して承認し直す。断片がないスライドの検査は `script.md` がなければ行わない。指紋の検査は `script.md` がなくても動く） |
 | `check <final.html>` | 体裁を検査する |
 | `build <元データ> [--footer …] [--out …]` | PPTX を書き出す。出力先に同名の PPTX があれば終了コード 4。上書きは同じ引数の `build-overwrite`。検査エラーは終了コード 1、入力の不備は 2 |
 | `clean <元データ>` | 一時フォルダの確認用の画像を消す |

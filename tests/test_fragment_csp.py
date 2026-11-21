@@ -3,7 +3,6 @@
 
 import contextlib
 import http.server
-import json
 import threading
 import time
 from pathlib import Path
@@ -11,6 +10,8 @@ from pathlib import Path
 import pytest
 from playwright.sync_api import Error as PlaywrightError
 from pptx_maker import candidates, cli, finalize, measure, paths, review_page
+
+from tests._flow import write_choices
 
 COMP = Path(__file__).resolve().parents[1] / "plugins" / "pptx-maker" / "assets" / "components"
 
@@ -126,12 +127,7 @@ def test_review_page_has_csp(tmp_path):
 def test_final_html_has_csp(tmp_path):
     w = _work(tmp_path, "<section>ONE</section>")
     (w / "slides" / "01-R2.html").write_text("<section>TWO</section>", encoding="utf-8")
-    ch = tmp_path / "ch"
-    (ch / "choices").mkdir(parents=True)
-    (ch / "choices" / "01.json").write_text(
-        json.dumps({"at": "2026-11-08T00:00:00.000Z", "comment": "", "pick": "R1", "status": "approved"}),
-        encoding="utf-8",
-    )
+    ch = write_choices(tmp_path / "ch", {"01": "R1"}, w)
     html = finalize.finalize(w, ch).read_text(encoding="utf-8")
     assert paths.CSP_FILE in html
     assert "connect-src 'none'" in html
