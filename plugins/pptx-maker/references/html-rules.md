@@ -1,6 +1,6 @@
 # HTML の書き方と描画の規準
 
-SKILL.md の 4 章の細則。断片（`<元データ>/slides/NN-X.html`）を書く前に読む。確認用の画像（`previews`）は、この HTML を Chromium で撮ったもので、PPTX の実描画ではない。型の一覧は [components.md](components.md)。
+SKILL.md の 3・4 章の細則。断片（`<元データ>/slides/NN-X.html`）を書く前に読む。確認用の画像（`previews`）は、この HTML を Chromium で撮ったもので、PPTX の実描画ではない。型の一覧は [components.md](components.md)。
 
 ## HTML の書き方
 
@@ -55,3 +55,15 @@ SKILL.md の 4 章の細則。断片（`<元データ>/slides/NN-X.html`）を�
 - 構図・余白・強弱・視線の流れ・文字の階層の観点と、使わない装飾（グラデーション・影・アニメーション・Web フォントなど）は、[design-directions.md](design-directions.md) に書いた。案を書く前に、そこでデザイン方向の候補を選ぶ。
 - 一覧にないアイコンや絵記号は、その場でインライン SVG に描く（色は `sv-f-*`・`sv-s-*`）。
 - 描いたら `check` で違反 0 件を確かめてから出す。ただしグラフ（`data-chart`）の不備は `check` に出ず、`build` で確定する。
+
+## 案を書く（create の 3・4 章）
+
+- `NN` はページ番号 2 桁。文言・数字は案の間で同じにする。
+- `Rk` は方向 k の構図・密度・主役の種類・余白・視線で書く。同じ方向の案どうしは傾向をそろえ、ページごとの構図は設計する（design-directions.md の 4 章。見本をなぞらない）。候補の行がない作業フォルダ（旧形式）は、従来どおり全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案）。
+- 方向どうしは色でなく、**構図**（旧形式は主役の種類）を変える。`data-variant="案の特徴"`。指針は上の「自由設計（R）の指針」。
+- `assets/components/` の断片は**見本**。写してもよいが、なぞらない（[components.md](components.md)・[patterns.md](patterns.md)）。グラフだけは `data-chart` で書く（ネイティブのグラフにするため）。
+- 断片に `<script>`・`<iframe>`・`<meta>`・`<title>`・`<textarea>`・`<style>` 内の `<`・CDATA・`<!-->` 型のコメント・CSS のバックスラッシュと `image(`・`expression(`・`on*=` 属性・外部 URL・`javascript:`・`mailto:`・`tel:` は書かない。コメントや本文でも `<meta` などは書けない（`review-page`・`choices-import`・`finalize` がエラーで止める。当たった語はメッセージに出る）。画像・URL は作業フォルダの相対パスと `#id`、`data:image/` だけ。細則は上の「HTML の書き方」。
+- **絵**: 書き方・5 種の作法・素材の読み方・聞くことは [picture-craft.md](picture-craft.md)。素材が薄いときは、描く前に `AskUserQuestion` で聞く。図 1 枚だけの依頼も、表紙と絵のページの 2 枚で、この流れで作る。
+- 最低限:
+  - 1 枚 = `<section class="slide" data-layout="…">`（1280×720px）。部品は `pp-text`・`pp-shape`・`pp-line`・`pp-image`・`pp-table`・`pp-chart`・`pp-picture` だけ。**ほかのクラスは PPTX に出ない**。
+  - 色は無彩色＋基調 1 色＋強調 1〜2 色の範囲（資料全体で数える。蛍光色は使わない。文字のコントラストは 4.5 以上）。`theme.css` の色の変数は使っても使わなくてもよい。題とヘッドメッセージの文字（既定は題 37px・リード 27px・BIZ UDPゴシック・左寄せ）は固定で、`chromeSpec` で検査される。変えるときは `<元データ>/rules.json`（`{"title": {"size_px", "align"}, "lead": {…}}`。`size_px` は theme.css に反映、`align` は検査だけ、フォントは固定）に書く。本文 14pt（約 19px）・注記 10pt（14px）以上、大きさは `data-role` か `var(--fs-*)`。

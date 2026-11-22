@@ -74,13 +74,20 @@ _SUBCOMMANDS = {
 }
 
 
+# スキルごとに許す Read（プラグインの references・見本の読み取りだけ。`Read(*)` のような広い許可は書かない）
+_READS = {"create": ["references/*", "assets/sample/*"]}
+
+
 @pytest.mark.parametrize("name", SKILL_NAMES)
 def test_allowed_tools_は_サブコマンドごとの_run_py_だけに絞る(name):
-    """`run.py *` のような広い許可は書かない。案の選択はローカルのページなので、Artifact 系のツールは許さない。"""
+    """`run.py *` のような広い許可は書かない。
+    許すのは、run.py のサブコマンドと、プラグインの references・見本の読み取りだけ。
+    案の選択はローカルのページなので、Artifact 系のツールは許さない。"""
     head = skill_text(name).split("\n---\n", 1)[0]
     m = re.search(r"^allowed-tools: '(.+)'$", head, re.M)
     assert m, f"{name}: allowed-tools がない"
-    want = [f"{_RUN_PY}{sub})" for sub in _SUBCOMMANDS[name]]
+    want = [f"Read(${{CLAUDE_PLUGIN_ROOT}}/{d})" for d in _READS.get(name, [])]
+    want += [f"{_RUN_PY}{sub})" for sub in _SUBCOMMANDS[name]]
     assert re.findall(r"Bash\([^)]*\)|[A-Za-z]+\([^)]*\)|[A-Za-z]+", m.group(1)) == want
 
 
@@ -138,9 +145,10 @@ def _known_commands():
 
 @pytest.mark.parametrize("f", DOC_FILES, ids=rel)
 def test_文書に書かれたコマンドは_cli_に実在する(f):
-    """`run.py" <コマンド>` と書かれたコマンド名は、cli.py の add_parser にある。"""
+    """`run.py" <コマンド>` と略記の `RUN <コマンド>` で書かれたコマンド名は、cli.py の add_parser にある。"""
     known = _known_commands()
     used = re.findall(r'run\.py"(?: --data "\$\{CLAUDE_PLUGIN_DATA\}")? ([a-z][a-z-]*)', read(f))
+    used += re.findall(r"`RUN ([a-z][a-z-]*)", read(f))
     assert [c for c in used if c not in known] == []
 
 
@@ -188,9 +196,11 @@ def test_run_py_の呼び出しはすべて_data_を付ける(f):
 
 
 def test_主要コマンドは_run_py_の形で文書に書かれている():
-    used = set()
-    for f in DOC_FILES:
-        used |= set(re.findall(r'run\.py" --data "\$\{CLAUDE_PLUGIN_DATA\}" ([a-z][a-z-]*)', read(f)))
+    """create は `--data` 付きの run.py の形を 1 回だけ定義し、以後は `RUN <サブコマンド>` の略記で書く。"""
+    t = skill_text("create").split("\n---\n", 1)[-1]
+    assert t.count('`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" <サブコマンド>`') == 1
+    assert "以下 `RUN <サブコマンド>` と書く" in t
+    used = set(re.findall(r"`RUN ([a-z][a-z-]*)", t))
     want = {"doctor", "setup", "init", "template-list", "lint-script", "review-page", "finalize", "build", "clean"}
     assert want <= used, want - used
 
