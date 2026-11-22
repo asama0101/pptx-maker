@@ -42,10 +42,6 @@ Claude Code で、次の 3 つを順に実行する。初回の `/pptx-maker:cre
 
 ライブラリは、プラグイン専用のフォルダ（`~/.claude/plugins/data/pptx-maker-<マーケットプレイス名>/`）に入る。パソコンの Python は変わらない。Chromium は、ほかのツールと共有する場所に入る。
 
-### オフラインでインストールする
-
-ネットワークのある環境で `git clone https://github.com/asama0101/pptx-maker.git` したフォルダを、媒体で持ち込み、`/plugin marketplace add <持ち込んだフォルダのパス>` と `/plugin install pptx-maker@pptx-maker` を実行する。持ち込んだフォルダは、そのままプラグインの本体になる。ブランチの切り替え・移動・削除をすると、プラグインが変わる、または動かなくなる。初回のライブラリと Chromium の取得には、ネットワークが要る。
-
 ### 更新
 
 新しい版は [Releases](https://github.com/asama0101/pptx-maker/releases) で確認できる。Claude Code で、次を順に実行し、Claude Code を開き直す。`/pptx-maker:doctor` で、今の版が最新かを確かめられる。
