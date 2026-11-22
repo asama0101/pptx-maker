@@ -17,9 +17,9 @@
 | 素材 | テーマ・メモ・文書・データ・Markdown 原稿・PPTX を読む。 | PPTX のノート・非表示スライド・画像を読む。 |
 | 出力 | 図形・文字・表・PowerPoint のグラフで、PowerPoint で直せる PPTX を作る。 | PowerPoint で直した内容を取り込む。 |
 | テンプレート | `.potx`・`.pptx` を登録し、その表紙・本文・裏表紙の上に作る。 | 3 つ以外のレイアウトを使う。 |
-| 図 | 型にない図は、「図にして」と頼むと画像で貼る。 | 画像の中身を PowerPoint で直す。 |
+| 図 | 型にない図は、`/pptx-maker:create` で「図にして」と頼むと画像で貼る。 | 画像の中身を PowerPoint で直す。 |
 
-Claude Code で打つコマンドは、次の 4 つ。打たずに、文章で頼んでもよい。内部で使うコマンドは [docs/development.md](docs/development.md#コマンド) にある。
+Claude Code で打つコマンドは、次の 4 つ。文章で頼んでも起動しないので、コマンドで呼ぶ。内部で使うコマンドは [docs/development.md](docs/development.md#コマンド) にある。
 
 - `/pptx-maker:create`: 資料や図を新しく作る。図だけの依頼は、表紙と図のスライドの 2 枚になる。
 - `/pptx-maker:doctor`: 環境を診断し、最新版かを確かめる。何も変えない。
@@ -63,7 +63,7 @@ Claude Code の `/plugin` から行う。ライブラリ・テンプレート・
 
 ## 使い方
 
-Claude Code で `/pptx-maker:create` を実行するか、「稟議資料を作って」のように頼む。次の図の 7 ステップで進み、コメントを書いたスライドだけ、5 で直して 4 に戻る。各ステップの内容は [docs/usage.md](docs/usage.md) にある。
+Claude Code で `/pptx-maker:create 稟議資料を作って` のように、コマンドに続けて頼みたいことを書く。次の図の 7 ステップで進み、コメントを書いたスライドだけ、5 で直して 4 に戻る。各ステップの内容は [docs/usage.md](docs/usage.md) にある。
 
 <img src="docs/images/flow.svg" width="800" alt="7 ステップの流れ。1 聞く、2 設計図と原稿、3 案を作る、4 案を選ぶ、5 直す（コメントがあるときだけ。4 と往復）、6 PPTX を作る、7 確認する。4 と 7 はあなたが行う。">
 
