@@ -75,7 +75,7 @@ _SUBCOMMANDS = {
 
 
 # スキルごとに許す Read（プラグインの references・見本の読み取りだけ。`Read(*)` のような広い許可は書かない）
-_READS = {"create": ["references/*", "assets/sample/*"]}
+_READS = {"create": ["references/*", "assets/*"]}
 
 
 @pytest.mark.parametrize("name", SKILL_NAMES)
@@ -437,3 +437,9 @@ def test_create_のページごとの_AI_判定は実装の_AI_PAGE_RULES_と一
     listed = set(re.findall(r"R\d{2}", line.split("ページごとに判定するのは", 1)[1].split("だけ", 1)[0]))
     assert listed == set(consulting._AI_PAGE_RULES)
     assert "利用者が足した AI のルールは、資料全体" in line
+
+
+@pytest.mark.parametrize("f", REFERENCE_FILES, ids=rel)
+def test_references_に置き換わる前提の変数を書かない(f):
+    """Read で開いた references では ${...} が置き換わらない。"""
+    assert "${" not in read(f)
