@@ -74,7 +74,7 @@ def _only_local(route) -> None:
     if scheme == "file":
         parts = urlsplit(url)
         path = unquote(parts.path).replace("\\", "/")
-        if parts.netloc not in ("", "localhost") or path.startswith("//"):
+        if parts.netloc.lower() not in ("", "localhost") or path.startswith("//"):
             route.abort()
             return
     if scheme in ("file", "data", "about", "blob"):
@@ -83,23 +83,46 @@ def _only_local(route) -> None:
         route.abort()
 
 
+def check_not_unc(html: Path) -> Path:
+    """UNC（ネットワーク共有）の作業フォルダは、file: がホスト名つきになり遮断で開けないので、先に断る。"""
+    resolved = Path(html).resolve()  # Z: のようなネットワークドライブは、解決すると UNC になる
+    for p in (str(html), str(resolved)):
+        if p.replace("/", "\\").startswith("\\\\"):
+            raise ValueError("作業フォルダが UNC（ネットワーク共有）にあります。ローカルのドライブに置いてください")
+    return resolved
+
+
+@contextmanager
+def guarded_page(b, **kwargs):
+    """通信を遮断したページを開く。遮断は page でなく context に付け、popup や WebSocket にも効かせる。"""
+    context = b.new_context(service_workers="block", **kwargs)
+    try:
+        context.route("**/*", _only_local)
+        context.route_web_socket("**/*", lambda ws: None)  # サーバーに繋がない（ここで ws.close() を呼ぶと固まる）
+        page = context.new_page()
+        try:
+            yield page
+        finally:
+            page.close()
+    finally:
+        context.close()
+
+
 def measure(html: Path, raster_dir: Path | None = None, browser=None) -> list[dict]:
     """raster_dir を渡すと、絵（pp-picture）を PNG にして raster_dir に置き、モデルの `src` に入れる（build 用）。"""
     js = (Path(__file__).parent / "measure.js").read_text(encoding="utf-8")
-    html = Path(html).resolve()
-    with open_browser(browser) as b:
-        page = b.new_page(
-            viewport={"width": 1280, "height": 720}, device_scale_factor=RASTER_SCALE if raster_dir else 1
-        )
-        page.route("**/*", _only_local)
-        try:
-            page.goto(html.as_uri())
-            page.evaluate("document.fonts.ready.then(() => true)")
-            slides = page.evaluate(js)
-            if raster_dir and slides:
-                _rasterize(page, slides, raster_dir)
-        finally:
-            page.close()
+    html = check_not_unc(html)
+    with (
+        open_browser(browser) as b,
+        guarded_page(
+            b, viewport={"width": 1280, "height": 720}, device_scale_factor=RASTER_SCALE if raster_dir else 1
+        ) as page,
+    ):
+        page.goto(html.as_uri())
+        page.evaluate("document.fonts.ready.then(() => true)")
+        slides = page.evaluate(js)
+        if raster_dir and slides:
+            _rasterize(page, slides, raster_dir)
     if not slides:
         raise ValueError(f"{html.name} に section.slide がありません")
     return slides

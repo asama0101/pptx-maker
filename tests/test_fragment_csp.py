@@ -3,6 +3,7 @@
 
 import contextlib
 import http.server
+import socket
 import threading
 import time
 from pathlib import Path
@@ -227,6 +228,7 @@ def test_measure_blocks_network_and_navigation(tmp_path):
         time.sleep(0.5)
     finally:
         srv.shutdown()
+        srv.server_close()
     assert hits == []
 
 
@@ -265,3 +267,140 @@ def test_only_local_blocks_unc_and_remote(url, expected):
     r = _Route(url)
     measure._only_local(r)
     assert r.result == expected
+
+
+_PAGE = (
+    '<!doctype html><html><head><meta charset="utf-8"></head><body>{body}'
+    '<section class="slide" style="width:1280px;height:720px">a</section></body></html>'
+)
+
+
+def _listen(port: int = 0) -> tuple[socket.socket, list[bytes]]:
+    """127.0.0.9 で待ち受け、届いた接続の先頭バイトを記録する（外のホストには接続しない）。"""
+    srv = socket.socket()
+    srv.bind(("127.0.0.9", port))
+    srv.listen()
+    srv.settimeout(0.2)
+    got: list[bytes] = []
+    stop = threading.Event()
+
+    def run():
+        while not stop.is_set():
+            try:
+                c, _ = srv.accept()
+            except OSError:
+                continue
+            got.append(c.recv(16))
+            c.close()
+
+    threading.Thread(target=run, daemon=True).start()
+    srv.stop = stop.set  # type: ignore[attr-defined]
+    return srv, got
+
+
+def test_measure_blocks_unc_style_urls_in_real_chromium(tmp_path, monkeypatch):
+    """実際の Chromium の URL 正規化を通しても、127.0.0.9 への file: は中断される。
+    445 はシステムの SMB が持つので待ち受けられない。代わりに、Chromium が route に渡す URL の判定を記録する。
+    待ち受けが取れる環境（445 が空き）では、届かないことも確かめる。"""
+    seen: list[tuple[str, bool]] = []
+    orig = measure._only_local
+
+    def spy(route):
+        r = _Route(route.request.url)
+        orig(r)
+        seen.append((r.request.url, r.result == "abort"))
+        orig(route)
+
+    monkeypatch.setattr(measure, "_only_local", spy)
+    try:
+        srv, got = _listen(445)
+    except OSError:
+        srv, got = None, []
+    f = tmp_path / "unc.html"
+    f.write_text(
+        _PAGE.format(
+            body="<svg><style>a{background:u&#114;l(//127.0.0.9/share/x.png)}</style></svg>"
+            '<img src="file:////127.0.0.9/share/x.png"><img src="file://127.0.0.9/share/y.png">'
+        ),
+        encoding="utf-8",
+    )
+    try:
+        measure.measure(f)
+        time.sleep(0.5)
+    finally:
+        if srv:
+            srv.stop()
+            srv.close()
+    remote = [(u, aborted) for u, aborted in seen if "127.0.0.9" in u]
+    assert remote
+    assert all(aborted for _, aborted in remote)
+    assert got == []
+
+
+def test_measure_blocks_popup_and_websocket(tmp_path):
+    """window.open の先と WebSocket は、page.route では止まらない。context の遮断で止める。"""
+    hits: list[str] = []
+
+    class H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            hits.append(self.path)
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, *a):
+            pass
+
+    srv = http.server.ThreadingHTTPServer(("127.0.0.9", 0), H)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    u = f"127.0.0.9:{srv.server_address[1]}"
+    f = tmp_path / "p.html"
+    f.write_text(
+        _PAGE.format(body=f"<script>window.open('http://{u}/popup');new WebSocket('ws://{u}/x');</script>"),
+        encoding="utf-8",
+    )
+    try:
+        measure.measure(f)
+        time.sleep(0.7)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+    assert hits == []
+
+
+def test_measure_works_in_non_ascii_work_dir(tmp_path):
+    """通常の file:/// の測定は、日本語・空白を含む作業フォルダでも成功する。"""
+    d = tmp_path / "作業 フォルダ"
+    d.mkdir()
+    f = d / "final.html"
+    f.write_text(_PAGE.format(body=""), encoding="utf-8")
+    assert len(measure.measure(f)) == 1
+
+
+def test_measure_rejects_unc_work_dir():
+    """UNC の作業フォルダは、接続せずに明示的なエラーにする。"""
+    with pytest.raises(ValueError, match="UNC"):
+        measure.measure(Path(r"\\srv\share\work\final.html"))
+
+
+def test_check_not_unc_rejects_unc_forms():
+    """先頭が 2 本のバックスラッシュの形（拡張パスの UNC や、スラッシュ区切りも）は断る。"""
+    for p in (r"\\srv\share\w", "//srv/share/w", r"\\?\UNC\srv\share\w"):
+        with pytest.raises(ValueError, match="UNC"):
+            measure.check_not_unc(Path(p))
+
+
+def test_check_not_unc_rejects_path_resolving_to_unc(monkeypatch):
+    """Z: のようなネットワークドライブは、resolve すると UNC になる。そのときも断る。"""
+    monkeypatch.setattr(Path, "resolve", lambda self, strict=False: Path(r"\\srv\share\x"))
+    with pytest.raises(ValueError, match="UNC"):
+        measure.check_not_unc(Path(r"Z:\w\final.html"))
+
+
+def test_as_page_rejects_unc_work_dir(tmp_path):
+    """断片の測定（review-page・check）も、UNC の作業フォルダは明示的なエラーにする。"""
+    from pptx_maker import cli
+
+    frag = tmp_path / "01-R1.html"
+    frag.write_text('<section class="slide">a</section>', encoding="utf-8")
+    with pytest.raises(ValueError, match="UNC"), cli._as_page(frag, Path(r"\\srv\share\w")):  # noqa: SLF001
+        pass
