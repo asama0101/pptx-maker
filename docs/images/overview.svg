@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380" width="800" height="380" role="img" aria-labelledby="t" font-family="'BIZ UDPGothic','Yu Gothic','Meiryo',sans-serif">
+<title id="t">素材から PPTX ができるまでの全体像</title>
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#1F3A5F"/></marker></defs>
+<rect width="800" height="380" fill="#FFFFFF"/>
+<rect x="20" y="40" width="200" height="300" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="120" y="72" text-anchor="middle" font-size="16" font-weight="700" fill="#1F3A5F">素材（自由）</text>
+<text x="40" y="112" font-size="14" fill="#222222">・テーマ、メモ</text>
+<text x="40" y="142" font-size="14" fill="#222222">・文書、データ</text>
+<text x="40" y="172" font-size="14" fill="#222222">・Markdown 原稿</text>
+<text x="40" y="202" font-size="14" fill="#222222">・PPTX</text>
+<text x="52" y="224" font-size="12" fill="#333333">題・本文・表・グラフの数値だけ</text>
+<text x="40" y="262" font-size="14" fill="#222222">・自分のテンプレート</text>
+<text x="52" y="284" font-size="12" fill="#333333">.potx / .pptx</text>
+<rect x="290" y="40" width="220" height="300" rx="10" fill="#FFFFFF" stroke="#1F3A5F" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="400" y="72" text-anchor="middle" font-size="16" font-weight="700" fill="#1F3A5F">案を見比べて選ぶ</text>
+<rect x="310" y="90" width="180" height="56" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="400" y="114" text-anchor="middle" font-size="13" fill="#222222">1 スライドに 3〜4 案</text>
+<text x="400" y="134" text-anchor="middle" font-size="13" fill="#222222">（デザイン方向ごとに 1 案）</text>
+<rect x="310" y="158" width="180" height="56" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="400" y="182" text-anchor="middle" font-size="13" fill="#222222">案を選び、コメントで</text>
+<text x="400" y="202" text-anchor="middle" font-size="13" fill="#222222">直し、承認する</text>
+<rect x="310" y="226" width="180" height="56" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="400" y="250" text-anchor="middle" font-size="13" fill="#222222">鉄板ルール 35 件の</text>
+<text x="400" y="270" text-anchor="middle" font-size="13" fill="#222222">検査結果を確かめる</text>
+<text x="400" y="312" text-anchor="middle" font-size="12" fill="#333333">自分のパソコンのブラウザで開く</text>
+<text x="400" y="328" text-anchor="middle" font-size="12" fill="#333333">（外のサービスには載せない）</text>
+<rect x="580" y="40" width="200" height="300" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="680" y="72" text-anchor="middle" font-size="16" font-weight="700" fill="#1F3A5F">PPTX</text>
+<text x="600" y="112" font-size="14" fill="#222222">・図形・文字・表</text>
+<text x="600" y="142" font-size="14" fill="#222222">・PowerPoint のグラフ</text>
+<text x="612" y="164" font-size="12" fill="#333333">PowerPoint で直せる</text>
+<text x="600" y="202" font-size="14" fill="#222222">・型にない図は画像</text>
+<text x="612" y="224" font-size="12" fill="#333333">中身は PowerPoint で直せない</text>
+<path d="M220 190 H290" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="255" y="178" text-anchor="middle" font-size="12" fill="#333333">チャット</text>
+<path d="M510 190 H580" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>
+<text x="545" y="178" text-anchor="middle" font-size="12" fill="#333333">全承認</text>
+<rect x="590" y="262" width="30" height="22" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
+<text x="630" y="279" font-size="12" fill="#333333">実線: 入力と成果物</text>
+<rect x="590" y="296" width="30" height="22" rx="8" fill="#FFFFFF" stroke="#1F3A5F" stroke-width="2" stroke-dasharray="6 4"/>
+<text x="630" y="313" font-size="12" fill="#333333">破線: あなたが行う</text>
+</svg>
