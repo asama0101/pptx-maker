@@ -414,3 +414,16 @@ def test_create_は_AI_判定を_review_page_の前に案内する():
     assert ai < t.index("## 5. 案の選択")
     for word in ("rule list --kind AI", "rule-review-import", "pending", "/pptx-maker:rules"):
         assert word in t, word
+
+
+def test_create_のページごとの_AI_判定は実装の_AI_PAGE_RULES_と一致する():
+    """利用者が足した AI のルールは、実装では資料全体（deck）で判定される。"""
+    import sys
+
+    sys.path.insert(0, str(PKG))
+    from pptx_maker import consulting
+
+    line = next(ln for ln in skill_text("create").splitlines() if "ページごとに判定するのは" in ln)
+    listed = set(re.findall(r"R\d{2}", line.split("ページごとに判定するのは", 1)[1].split("だけ", 1)[0]))
+    assert listed == set(consulting._AI_PAGE_RULES)
+    assert "利用者が足した AI のルールは、資料全体" in line
