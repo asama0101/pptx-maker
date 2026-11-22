@@ -6,7 +6,7 @@ from pathlib import Path
 from . import candidates, choices, consulting, paths, script_lint
 
 HEAD = (
-    '<!doctype html><html lang="ja"><head><meta charset="utf-8"><title>{title}</title>'
+    '<!doctype html><html lang="ja"><head><meta charset="utf-8">' + paths.CSP_FILE + "<title>{title}</title>"
     '<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="base.css">'
     '<script src="chart-preview.js" defer></script></head><body>'
 )
@@ -14,7 +14,7 @@ HEAD = (
 
 def finalize(work: Path, choices_dir: Path, home=None) -> Path:
     """`choices_dir`（choices/ を含むフォルダ）の選択結果から `final.html` を書いて返す。
-    承認されていない・案が決まっていない・コメント未反映・選択結果がないスライドがあるか、原稿（script.md）にあるのに断片がないスライドがあるか、
+    承認されていない・案が決まっていない・コメント未反映・承認のあとで断片が変わった（承認の記録に断片の指紋がない）・選択結果がないスライドがあるか、原稿（script.md）にあるのに断片がないスライドがあるか、
     AI の判定が済んでいないルールがあれば、全件まとめて ValueError。"""
     work = Path(work)
     cands = candidates.collect(work)
@@ -42,12 +42,18 @@ def finalize(work: Path, choices_dir: Path, home=None) -> Path:
             problems.append(f"S{nn}: 選ばれた案 {c['pick']} が slides/ にありません（候補: {', '.join(cands[nn])}）")
         elif c["comment"]:
             problems.append(f"S{nn}: コメント未反映です: {c['comment']}")
+        elif (frag := choices.frag_of(choices_dir, nn)) is None:
+            problems.append(
+                f"S{nn}: 古い形式の承認のため、断片の指紋がありません。review-page を作り直し、承認し直してください"
+            )
+        elif frag != choices.fragment_hash(cands[nn][c["pick"]]):
+            problems.append(f"S{nn}: 承認のあとで断片が変わっています。review-page をやり直し、承認し直してください")
         else:
             picked[nn] = cands[nn][c["pick"]]
     pending = consulting.pending_ai(work, home)
     if pending:
         problems.append(
-            "AI 判定が済んでいません: "
+            "AI 判定が済んでいません（記録がない、または「断片が変わった」ため判定し直しが要る）: "
             + "、".join(pending)
             + "（採点表で判定して rule-review-import で記録する。使わないルールは /pptx-maker:rules で無効にできる）"
         )

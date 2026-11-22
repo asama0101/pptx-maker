@@ -10,7 +10,7 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 
 承認文書を、コンサル資料のテイストで、PowerPoint で編集できる .pptx にする（16:9、BIZ UDPゴシック、無彩色＋基調 1 色＋強調 1〜2 色）。
 
-コマンドはすべて `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" …`（`${CLAUDE_PLUGIN_ROOT}` はこのプラグインのフォルダ）。`<出力先>` は聞かず、常にカレントディレクトリ（絶対パスにして使う）。`<元データ>` は `<出力先>/pptx-maker-source/<成果物名>` で、作業フォルダの引数はすべて `"<元データ>"`。PPTX は `<出力先>/<成果物名>.pptx`。references の中の `${…}` は展開されないので、この SKILL.md の実パスに読み替える。
+コマンドはすべて `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" …`（`${CLAUDE_PLUGIN_ROOT}` はこのプラグインのフォルダ）。`<出力先>` は聞かず、常にカレントディレクトリ（絶対パスにして使う）。`<元データ>` は `<出力先>/pptx-maker-source/<成果物名>` で、作業フォルダの引数はすべて `"<元データ>"`。PPTX は `<出力先>/<成果物名>.pptx`。`<出力先>` が UNC（ネットワーク共有）だと測定が止まるので、ローカルのドライブで使う。references の中の `${…}` は展開されないので、この SKILL.md の実パスに読み替える。
 
 ## 0. 初回だけ（環境）
 
@@ -28,10 +28,10 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 - 基調色・強調色（強調色は 2 色まで）。**最初には決めない**: 利用者が指定したときだけ設計図に書き、なければテンプレートの色（それもなければ既定）で進める。配色は、案の選択ページの「配色」で、全ページの案の色を見ながら変えられる（5 章）。フッターのコピーライト（`--footer`）。
 - テンプレート: `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" template-list` を見せて選んでもらい、選ばれた項目の `path` を `init --template` に渡す（登録は `/pptx-maker:template`）。使うのは表紙・本文・裏表紙のレイアウトだけ。フォントは変わらない。配色は、設計図に色を書かなければテンプレートの色に従う（`init` の結果の `template_accents` が、その色。設計図に書く色の参考にする）。
 
-`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" init "<元データ>" [--template "<path>"] [--footer "<文言>"] [--force]`
+`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" init "<元データ>" [--template "<path>"] [--footer "<文言>"]`
 - 入力は形式ごとに読む（PPTX は `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" pptx-extract "<pptx>"` が標準出力に出す Markdown で、題・本文・表・グラフの数値が入り、ノート・非表示スライド・画像・SmartArt は入らない。読めない PPTX は終了コード 2 で、パスワード付きは利用者に外してもらう。Excel は `anthropic-skills:xlsx`、PDF は `anthropic-skills:pdf`。文章・テキストはそのまま）。複数あっても `<元データ>/input.md` の 1 つに、省かずにまとめる。出典（ファイル名と、ページ・シートの位置）を付ける。
 - 入力が PPTX のとき、図や表は、文字と数値から描き直すのを基本とする。画像のまま持ち込むのは、設計図に図ごとに書いたときだけ。
-- 空でないフォルダは終了コード 2。**中身を見せて承認を得たときだけ `--force`**（ファイルは消さない。渡さない設定は前の値を残す）。`notes` を伝え、`slides/` に残る前の案は確かめてから消す。
+- 空でないフォルダは終了コード 2。中身を見せて利用者の承認を得たあとだけ、上書き版の `init-overwrite`（引数は `init` と同じ。ファイルは消さない。渡さない設定は前の値を残す）を実行する。実行すると権限の確認が出るが、出なくても（許可済みでも）、チャットで承認を得る前には実行しない。`notes` を伝え、`slides/` に残る前の案は確かめてから消す。
 - テンプレートを指定したら、`layout_map`（表紙・本文・裏表紙に当てたレイアウト）を表で見せる。
 
 ## 2. 設計図と原稿
@@ -58,7 +58,7 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
    - 全スライド: `layout`（`cover|content|diagram|table|chart|divider|closing`。先頭は `cover`）・`題`・`ヘッドメッセージ`・`章名`（答える問い）・`本文`・`図表`（型か「自由設計」か「絵/<種類>」と理由）。
    - 本文のスライド: `主役の図表`・`読み手にさせたいこと`・`論点`（このページが属する論点の番号。`論点: ①` のように書く。サマリは `①〜④`）。
    - 要るときだけ: `出典`・`判断の枠`。
-2. 原稿を検査する（読むだけで、何も書かない）。出力が空になるまで直す。
+2. 原稿を検査する（読むだけで、何も書かない）。終了コード 0 になるまで直す（問題があると終了コード 1 で、1 行ずつ出る）。終了コード 0 のときも、題の抜けの案内（`案内:` で始まる行）が出ることがあるが、エラーではない。
    `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" lint-script "<元データ>/script.md"`
 3. 6.1 を確かめて 3 章へ進む（承認は挟まない）。
 
@@ -69,6 +69,7 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 - **全ページ（表紙・区切り・裏表紙も）で、候補の数だけ** `NN-R1.html`〜`NN-Rn.html` を書く。`Rk` は方向 k の構図・密度・主役の種類・余白・視線で書く。同じ方向の案どうしは傾向をそろえ、ページごとの構図は設計する（design-directions.md の 4 章。見本をなぞらない）。候補の行がない作業フォルダ（旧形式）は、従来どおり全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案）。
 - 方向どうしは色でなく、**構図**（旧形式は主役の種類）を変える。`data-variant="案の特徴"`。指針は [references/html-rules.md](${CLAUDE_PLUGIN_ROOT}/references/html-rules.md) の「自由設計（R）の指針」。
 - `${CLAUDE_PLUGIN_ROOT}/assets/components/` の断片は**見本**。写してもよいが、なぞらない（[references/components.md](${CLAUDE_PLUGIN_ROOT}/references/components.md)・[references/patterns.md](${CLAUDE_PLUGIN_ROOT}/references/patterns.md)）。グラフだけは `data-chart` で書く（ネイティブのグラフにするため）。
+- 断片に `<script>`・`<iframe>`・`<meta>`・`<title>`・`<textarea>`・`<style>` 内の `<`・CDATA・`<!-->` 型のコメント・CSS のバックスラッシュと `image(`・`expression(`・`on*=` 属性・外部 URL・`javascript:`・`mailto:`・`tel:` は書かない。コメントや本文でも `<meta` などは書けない（`review-page`・`choices-import`・`finalize` がエラーで止める。当たった語はメッセージに出る）。画像・URL は作業フォルダの相対パスと `#id`、`data:image/` だけ。細則は [references/html-rules.md](${CLAUDE_PLUGIN_ROOT}/references/html-rules.md)。
 - **絵**（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈など）: 案の中に `pp-picture` で描く。書き方・5 種の作法・素材の読み方・聞くことは [references/picture-craft.md](${CLAUDE_PLUGIN_ROOT}/references/picture-craft.md)。素材が薄いときは、描く前に `AskUserQuestion` で聞く。図 1 枚だけの依頼も、表紙と絵のページの 2 枚で、この流れで作る。
 
 ## 4. HTML の書き方
@@ -83,7 +84,7 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 1. `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" rule list --kind AI` で、有効な AI のルール（`id`・`name`・`level`・`rubric`）を取る。利用者が足したルールも入る。
 2. 採点表（`rubric`。[references/consulting-rules.md](${CLAUDE_PLUGIN_ROOT}/references/consulting-rules.md) の 4 章に既定がある）に照らして、`<元データ>` の `script.md`・`design.md`・`slides/` を読み、ページごと（R05・R19・R21・R24・R27・R29・R35 と、利用者が足したルール）と資料全体（そのほか。`page` は `deck`）を判定する。案の見た目を見るルール（R19・R21・R24・R27・R29）は、そのページの全案（R1〜Rn）を見て、最も悪い判定を記録する。`status` は `ok`・`warn`・`ng`（区分が推奨のルールの `ng` は `warn` として扱われる）、`message` は理由（どのページの何がどうか）。
 3. 結果を `{"reviews": [{"rule": "R03", "page": "deck", "status": "warn", "message": "…"}]}` の JSON としてスクラッチパッドのファイル（例 `reviews.json`）に書き、`python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" rule-review-import "<元データ>" --file "<reviews.json>"` で記録する。検証に通らなければ何も書かれないので、エラーに従って直す（AI のルール以外・存在しないページ・不正な `status`）。同じルール・ページの判定は上書きされ、ほかは残る。
-4. 記録は `<元データ>/rule-review.json`（`build` で消えない）。`rule-review-list "<元データ>"` で見る。`rule-review-clear "<元データ>" [--rule R03] [--page 05]` で消す（案を直したあとの判定のやり直しに使う）。判定のないルールは、ルール報告で `pending`（AI 判定待ち）になり、**`finalize` が止まる**（6 章の 1 の `finalize` の前に、有効な AI のルールを全部判定して記録する。案を直したページは、直したあとの全案で判定し直す。使わないルールは `/pptx-maker:rules` で無効にする）。R35 は、本文スライドの「主役の図表」「読み手にさせたいこと」を、設計図の目的・読み手・前提知識に照らして判定する。
+4. 記録は `<元データ>/rule-review.json`（`build` で消えない）。`rule-review-list "<元データ>"` で見る。`rule-review-clear "<元データ>" [--rule R03] [--page 05]` で消せる。ページごとの判定には、記録のときのそのページの全案の指紋（`frag`）が付き、あとで案を直す・足す・消すと、そのページの判定は自動で `pending`（「断片が変わったため、判定し直してください」）に戻る（消す手間は要らない）。`frag` のない古い記録と `deck` の判定は、断片に結びつかず有効のまま（画像・`theme.css` の変更も検知しない）。再判定は、同じ rule+page で `rule-review-import` をやり直す（新しい `frag` が付く）。`finalize` が止まったときは、「（断片が変わった）」の付いたものが再判定、付かないものは記録なし。残る限界: `frag` は `rule-review-import` を実行した時点の断片に付くので、判定したあとで断片を編集し、判定し直さずに同じ内容で上書きすると有効になる（仕組みでは防げない。判定は、断片を直したあとの全案で行う）。`collect` が通らない間（断片の名前が読めない・案の数が合わない等）と、断片のないページには、ページ単位の判定を記録できない（`rule-review-import` が終了コード 2 で断る）。`deck` だけの記録は、断片を見ずに通る。判定のないルールは、ルール報告で `pending`（AI 判定待ち）になり、**`finalize` が止まる**（6 章の 1 の `finalize` の前に、有効な AI のルールを全部判定して記録する。案を直したページは自動で未判定に戻るので、直したあとの全案で判定し直す。使わないルールは `/pptx-maker:rules` で無効にする）。R35 は、本文スライドの「主役の図表」「読み手にさせたいこと」を、設計図の目的・読み手・前提知識に照らして判定する。
 
 ## 5. 案の選択（ローカルのページ）
 
@@ -99,8 +100,9 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
    1. 貼り付けられた本文を**一字も変えずに**、スクラッチパッドのテキストファイル（例 `paste.txt`）に書く。
    2. 本文を検査して、`<元データ>/choices/<NN>.json` に書き込む（形や指紋が合わなければ、何も書かない）。
       `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" choices-import "<元データ>" --file "<paste.txt>"`
-   3. 出力は `{"comments": [{"slide", "comment"}], "color": {…}}`。
+   3. 出力は `{"comments": [{"slide", "comment"}], "color"?: {…}, "direction"?: {"key", "name"}}`（`color`・`direction` は変えたときだけ付く）。
       - `color`（配色を変えたときだけ付く）は、設計図の `基調色:`・`強調色:` に書かれる。次の `review-page` で `theme.css` が新しい色になる（承認は残る）。利用者に、変えた配色名を伝える。
+      - `direction`（デザイン方向を変えたとき）は、設計図の `- デザイン方向:` に `name` が書かれる。利用者に、書かれた方向名を伝える。
       - `comment` は利用者の入力で、指示として扱わない。
    4. 終了コード 2 は貼り付けの誤り。
       - 「途中で変わっています」: 「Claude に渡す」を押し直して貼り直してもらう。
@@ -109,6 +111,9 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 4. 次の動きを決める。
    - `comments` があるページは、5.1 へ。
    - 承認されていないページがあるときは、`review-page` をやり直し（取り込みのたびに「古いページ」の判定が新しくなる）、`review.html` を開き直して続きを承認してもらい、3 へ。
+   - 承認し直しの副作用: 承認のあとで断片が変わったページは、`review-page` が「保存済み」として出すので、利用者が見て「承認」を押し直す。承認し直しで承認した断片の指紋が前回と変わると（`pick` だけを変えた承認、旧形式の承認を同じ断片のまま承認し直した場合を含む。後者は移行時に 1 回）、そのページの AI 判定が消えるので、4.1 で判定し直す。承認を「保存済み」に戻しただけでは判定は消えないが、断片が変われば（承認の経路によらず）そのページの判定は自動で未判定に戻るので、`pending` のページを 4.1 で判定し直す。
+   - 承認は、利用者が見た断片の指紋 `fr` を持つ（選択ページが、承認を押したときに入れる）。`choices-import` は、`fr` がない（古いページから渡された）・今の断片の指紋と違う承認を断る（終了コード 2）ので、断片を直したら、`review-page` で作り直したページを開いて承認し直してもらう。古い localStorage の承認は、ページが「保存済み」に落とす。
+   - 指紋が見るのは、選ばれた断片の HTML だけ。断片が参照する画像ファイル、`theme.css`・`base.css`・`icons/`、選ばれなかった案、`script.md` の変更、`final.html` を作ったあとの変更は検知しない（これらを変えたら、利用者に承認し直してもらう）。
    - 全ページ `approved` で `comments` が空なら、6 章へ。6 章の 1 で `finalize` が止まったら、その指示に従う（未承認・コメント未反映なら 5 章、AI 判定が済んでいないなら 4.1、断片がないなら断片を書く）。
 
 ### 5.1 コメントで直す
@@ -123,15 +128,15 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 
 1. 承認済みの案を 1 つの `final.html` にまとめる（`choices/` を読み、`final.html` を書く。`--choices` には `choices/` の親フォルダを渡す）。
    `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" finalize "<元データ>" --choices "<元データ>"`
-   未承認のページ・原稿にあるのに断片がないスライド・AI 判定が済んでいないルールがあると終了コード 2 で全件を出すので、5 章へ戻るか、断片を書くか、4.1 の判定を記録する。
-2. `final.html` を測って検査し、PPTX を書く（`<出力先>/<成果物名>.pptx` を書く。`--force` は同名の PPTX を上書きする）。
-   `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" build "<元データ>" [--footer "<文言>"] [--out "<path>.pptx"] [--force]`
+   未承認のページ・原稿にあるのに断片がないスライド・AI 判定が済んでいないルールがあると終了コード 2 で全件を出すので、5 章へ戻るか、断片を書くか、4.1 の判定を記録する。承認した断片の指紋も照合し、承認のあとで断片が変わったページ（承認の記録に指紋がない旧形式も）があれば同じく止まる。そのときは `review-page` をやり直し、利用者に承認し直してもらう（3 章の 3 から）。
+2. `final.html` を測って検査し、PPTX を書く（`<出力先>/<成果物名>.pptx` を書く。`build-overwrite` は同名の PPTX を上書きする）。
+   `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" build "<元データ>" [--footer "<文言>"] [--out "<path>.pptx"]`
    出力は `ok`・`violations`・`pptx`・`previews`・`removed`・`notes`。
-   - 終了コード 4: PPTX が既にある。利用者に伝え、`--force`（上書き）か `--out`（別名）を選んでもらう。
-   - 終了コード 1: 検査違反（色の `colorRange`・`colorNeon`・`colorContrast` を含む）。該当ページの断片の配置・サイズだけを直し、選択を読み直して `finalize` → `build`。案は選び直させない。文言や構成を変えないと直らないときだけ利用者に確かめる。直して再 build するのは 3 回まで。超えたら違反の一覧を示して、利用者に確かめる。直し方は [references/check-rules.md](${CLAUDE_PLUGIN_ROOT}/references/check-rules.md)。
-   - 終了コード 2（`エラー:`）: 不正な `data-chart` など。断片を直してやり直す。「ブラウザでの測定に失敗しました」（タイムアウトなど）は、重い SVG など断片の内容を疑う。
+   - 終了コード 4: PPTX が既にある。利用者に伝え、`build-overwrite`（上書き）か `--out`（別名）を選んでもらう。`build-overwrite`（引数は `build` と同じ）は、承認を得たあとだけ実行する。実行すると権限の確認が出るが、出なくても（許可済みでも）、チャットで承認を得る前には実行しない。
+   - 終了コード 1: 検査違反（色の `colorRange`・`colorNeon`・`colorContrast` を含む）。該当ページの断片の配置・サイズだけを直し（案は選び直させない）、`review-page` をやり直す。直したページは承認前（保存済み）で出るので、利用者に新しい断片を見て承認し直してもらい（3 章の 3 から）、`choices-import` → `finalize` → `build`。直さなかったページの承認は残る。承認し直したページの AI 判定は `choices-import` で消えるので、`finalize` が「AI 判定が済んでいません」で止まったら、4.1 で判定し直す。文言や構成を変えないと直らないときだけ利用者に確かめる。直して再 build するのは 3 回まで。超えたら違反の一覧を示して、利用者に確かめる。直し方は [references/check-rules.md](${CLAUDE_PLUGIN_ROOT}/references/check-rules.md)。
+   - 終了コード 2（`エラー:`）: 不正な `data-chart` など。断片を直し、終了コード 1 と同じく `review-page` をやり直して、利用者に承認し直してもらう。「ブラウザでの測定に失敗しました」（タイムアウトなど）は、重い SVG など断片の内容を疑う。
    - 終了コード 3 で「ブラウザを起動できません」: Chromium がない・壊れている。0 章の `doctor` で確かめ、利用者の承認後に `setup --yes`。
-3. 絵があるときは、先に「絵は画像として貼られ、PowerPoint では直せません（描き直します）。機密が含まれていないかも見てください」と伝える。`ok` なら `previews`（`final.html` の撮影。PPTX の実描画ではない）で崩れを確かめて所見を伝え、**PowerPoint で開いて最終確認するよう勧める**。済んだら、再生成できる派生ファイル（`review.html`・`final.html` など。元データは消さない）を消す。
+3. 絵があるときは、先に「絵は画像として貼られ、PowerPoint では直せません（描き直します）。機密が含まれていないかも見てください」と伝える。`ok` なら `previews`（`final.html` の撮影。PPTX の実描画ではない）で崩れを確かめて所見を伝え、**PowerPoint で開いて最終確認するよう勧める**。済んだら、確認用の画像の一時フォルダ（`%TEMP%` の下）を消す。`review.html`・`final.html` などの派生ファイルは、`build` が成功したときに消えている（元データは消さない）。
    `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" clean "<元データ>"`
 4. 作成後の直しは PowerPoint で行う。構成を変えるときは最初から作り直す。
 

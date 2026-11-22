@@ -9,7 +9,7 @@ import json
 import re
 from pathlib import Path
 
-from . import consulting, paths, script_lint
+from . import candidates, choices, consulting, paths, script_lint
 
 KINDS = ("機械", "AI", "人")
 LEVELS = ("必須", "推奨")
@@ -294,6 +294,9 @@ def _apply_one(data: dict, op) -> dict:
 # --- AI 判定の記録（rule-review.json） ---
 
 
+_FRAG = re.compile(r"[0-9a-f]{12}")  # choices.page_frag が返す形
+
+
 def read_reviews(work) -> list[dict]:
     f = Path(work) / REVIEW_FILE
     if not f.is_file():
@@ -305,6 +308,10 @@ def read_reviews(work) -> list[dict]:
     reviews = data.get("reviews") if isinstance(data, dict) else None
     if not isinstance(reviews, list):
         raise ValueError(f'{f} の形が違います（{{"reviews": [...]}}）')
+    if not all(isinstance(r, dict) and "rule" in r and "page" in r for r in reviews):
+        raise ValueError(f"{f} が壊れています（reviews の各項目は rule と page を持つオブジェクトです）")
+    if not all(r.get("frag") is None or (isinstance(r["frag"], str) and _FRAG.fullmatch(r["frag"])) for r in reviews):
+        raise ValueError(f"{f} が壊れています（frag は 12 桁の 16 進数です）")
     return reviews
 
 
@@ -338,8 +345,23 @@ def import_reviews(work, data, home=None) -> int:
     if errors:
         raise ValueError("\n".join(errors))
     merged = {(r["rule"], r["page"]): r for r in read_reviews(work)}
+    cands = {}
+    if any(it["page"] != "deck" for it in items):
+        # ページ単位の判定は、そのページの断片の指紋 frag と一緒に記録する（frag なしは永久に有効になるため、
+        # collect が通らない間・断片がないページには記録させない）。deck だけなら断片は見ない
+        try:
+            cands = candidates.collect(work)
+        except ValueError as e:
+            raise ValueError(f"断片の検査に落ちています。直してから判定し直してください:\n{e}") from e
+        missing = sorted({it["page"] for it in items if it["page"] != "deck" and not cands.get(it["page"])})
+        if missing:
+            msg = [f"スライド {nn} に断片がありません。断片を書いてから判定してください" for nn in missing]
+            raise ValueError("\n".join(msg))
     for it in items:
-        merged[(it["rule"], it["page"])] = {k: it[k] for k in ("rule", "page", "status", "message")}
+        rec = {k: it[k] for k in ("rule", "page", "status", "message")}
+        if it["page"] != "deck":
+            rec["frag"] = choices.page_frag(cands[it["page"]])
+        merged[(it["rule"], it["page"])] = rec
     _write_reviews(work, list(merged.values()))
     return len(items)
 

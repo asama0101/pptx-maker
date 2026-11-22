@@ -1,4 +1,4 @@
-"""再監査 F2: entry の例外処理（#11・#22）、init --force（#16）、ensure_derived（#25）、
+"""再監査 F2: entry の例外処理（#11・#22）、init-overwrite（#16）、ensure_derived（#25）、
 run.py の stderr（#29）、build --out（#30）。"""
 
 # ruff: noqa: S101  # pytest の assert
@@ -221,10 +221,10 @@ def test_check_は存在しない_html_なら測定せず終了コード2で止�
     assert out == ""
 
 
-# ---- init --force とテンプレート ----
+# ---- init-overwrite とテンプレート ----
 
 
-def test_利用者のテンプレートが消えた成果物の_force_は_template_を求めて終了コード2で止まる(tmp_path, capsys):
+def test_利用者のテンプレートが消えた成果物の_init_overwrite_は_template_を求めて終了コード2で止まる(tmp_path, capsys):
     b = tmp_path / "out" / "pptx-maker-source" / "deck"
     initdir.init(b, template_path=custom_template(tmp_path / "own.potx"))
     work = paths.resolve_work(b)
@@ -232,12 +232,12 @@ def test_利用者のテンプレートが消えた成果物の_force_は_templa
     (work / paths.read_cfg(work)["template"]).unlink()
     with pytest.raises(ValueError, match="--template"):
         initdir.init(b, force=True)
-    rc, _, err = entry(capsys, "init", str(b), "--force")
+    rc, _, err = entry(capsys, "init-overwrite", str(b))
     assert rc == 2
     assert "--template" in err
 
 
-def test_標準テンプレートが消えた成果物の_force_は標準テンプレートを作り直す(base):
+def test_標準テンプレートが消えた成果物の_init_overwrite_は標準テンプレートを作り直す(base):
     work = paths.resolve_work(base)
     assert paths.read_cfg(work)["custom_template"] is False
     (work / paths.read_cfg(work)["template"]).unlink()
@@ -247,7 +247,7 @@ def test_標準テンプレートが消えた成果物の_force_は標準テン�
     assert cfg["custom_template"] is False
 
 
-def test_force_で作り直しても利用者のテンプレートの印が残り_消えたら求める(tmp_path):
+def test_init_overwrite_で作り直しても利用者のテンプレートの印が残り_消えたら求める(tmp_path):
     b = tmp_path / "out" / "pptx-maker-source" / "deck"
     initdir.init(b, template_path=custom_template(tmp_path / "own.potx"))
     work = paths.resolve_work(b)
@@ -264,7 +264,7 @@ def test_標準テンプレートを明示して_init_しても利用者のテ�
     assert paths.read_cfg(paths.resolve_work(b))["custom_template"] is False
 
 
-def test_テンプレートの記録がない古い成果物でテンプレートが消えたら_force_は_template_を求める(base):
+def test_テンプレートの記録がない古い成果物でテンプレートが消えたら_init_overwrite_は_template_を求める(base):
     work = paths.resolve_work(base)  # 記録のない古い作業フォルダは、利用者のテンプレートかもしれないので止める
     cfg = paths.read_cfg(work)
     del cfg["custom_template"]
@@ -274,7 +274,7 @@ def test_テンプレートの記録がない古い成果物でテンプレー�
         initdir.init(base, force=True)
 
 
-def test_テンプレートが消えていても_template_を渡せば_force_で復旧できる(base):
+def test_テンプレートが消えていても_template_を渡せば_init_overwrite_で復旧できる(base):
     work = paths.resolve_work(base)
     template = work / paths.read_cfg(work)["template"]
     template.unlink()
@@ -328,7 +328,7 @@ def test_出力先がフォルダなら測定の前に終了コード2で止ま�
     d = tmp_path / "outdir"
     d.mkdir()
     capsys.readouterr()
-    rc = cli.main(["build", str(deck_with_final), "--out", str(d), "--force"])
+    rc = cli.main(["build-overwrite", str(deck_with_final), "--out", str(d)])
     cap = capsys.readouterr()
     assert rc == 2
     assert ".pptx" in cap.err

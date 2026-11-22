@@ -199,8 +199,8 @@ def test_cli_review_page_with_bad_candidate_name(deck, capsys):
 
 def test_html_comment_open_is_neutralized_in_embedded_data(tmp_path):
     work = _work(tmp_path)
-    write_slide(work / "slides", "01", "<div><!--<script>x</div>")
+    write_slide(work / "slides", "01", "<div><!--<b>x</div>")
     html = review_page.build(work).read_text(encoding="utf-8")
     raw = re.search(r'<script type="application/json" id="data">(.*?)</script>', html, re.S).group(1)
     assert "<!--" not in raw
-    assert _page_data(html)[0][1]["R1"] == "<div><!--<script>x</div>"
+    assert _page_data(html)[0][1]["R1"] == "<div><!--<b>x</div>"

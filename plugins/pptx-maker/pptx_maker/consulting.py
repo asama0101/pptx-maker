@@ -9,7 +9,7 @@ import re
 from html import unescape
 from pathlib import Path
 
-from . import candidates, fragcheck, paths, script_lint
+from . import candidates, choices, fragcheck, paths, script_lint
 
 
 def _m(id_, name, level, where, description):  # 機械が判定するルール
@@ -323,6 +323,7 @@ _AI_PAGE_RULES = {
     "R35",
 }  # AI の判定をページごとに求めるルール。ほかは資料全体（deck）
 _PENDING = "AI の判定がありません（採点表で判定して rule-review-import で記録する）"
+_STALE = "断片が変わったため、判定し直してください（採点表で判定して rule-review-import で記録する）"
 # script_lint.lint のメッセージを、文言の特徴（キーワード）でルールに対応づける。
 #   R10: 最初のスライドが表紙でない（ファイル全体）
 #   R13: ヘッドメッセージに判断語か接続語がない
@@ -499,7 +500,7 @@ def evaluate(work, home=None, measure: bool = False) -> dict:
                     res += [_res(rid, "build", _BUILD_MESSAGE) for rid in _BUILD_RULES if on(rid)]
         pages[nn] = {"deck_rules": page_rules, "variants": variants}
 
-    _add_ai_results(rules, rulebook.read_reviews(work), deck, pages, body_nns)
+    _add_ai_results(rules, rulebook.read_reviews(work), deck, pages, body_nns, cands)
     out = {
         "rules": rules,
         "deck": deck,
@@ -514,9 +515,17 @@ def evaluate(work, home=None, measure: bool = False) -> dict:
 
 
 def _add_ai_results(
-    rules: list[dict], reviews: list[dict], deck: list[dict], pages: dict[str, dict], body_nns: list[str]
+    rules: list[dict],
+    reviews: list[dict],
+    deck: list[dict],
+    pages: dict[str, dict],
+    body_nns: list[str],
+    cands: dict[str, dict[str, str]],
 ) -> None:
-    """AI のルールの結果（判定済みはその内容、まだなら pending）を、deck とページの deck_rules に足す。"""
+    """AI のルールの結果（判定済みはその内容、まだなら pending）を、deck とページの deck_rules に足す。
+    記録に断片の指紋 frag があり、いまのそのページの指紋と違えば、判定し直しの pending にする。
+    frag のない記録（古いもの、deck）は、今までどおり有効。"""
+    now = {nn: choices.page_frag(c) for nn, c in cands.items() if c}  # ページごとに 1 回だけ計算する
     for r in (r for r in rules if r["kind"] == "AI"):
         mine = {v["page"]: v for v in reviews if v["rule"] == r["id"]}
         places = list(body_nns) if r["id"] in _AI_PAGE_RULES else ["deck"]
@@ -525,6 +534,8 @@ def _add_ai_results(
             v = mine.get(place)
             if v is None:
                 res = _res(r["id"], "pending", _PENDING, "AI")
+            elif v.get("frag") is not None and v["frag"] != now.get(place):
+                res = _res(r["id"], "pending", _STALE, "AI")
             else:
                 status = "warn" if v["status"] == "ng" and r["level"] != "必須" else v["status"]
                 res = _res(r["id"], status, v["message"], "AI")
@@ -578,11 +589,16 @@ def vertical_reading(work) -> dict:
 
 
 def pending_ai(work, home=None) -> list[str]:
-    """AI の判定がまだのルールを「R01 deck」「R05 p03」の形で返す（有効なルールだけ。script.md がなければ空）。"""
+    """AI の判定がまだのルールを「R01 全体」「R05 S03」の形で返す（有効なルールだけ。script.md がなければ空）。
+    断片が変わって判定し直しになったものは、末尾に「（断片が変わった）」を付ける。"""
     if not (Path(work) / "script.md").is_file():
         return []
     res = evaluate(work, home)
-    out = [f"{x['rule']} 全体" for x in res["deck"] if x["status"] == "pending"]
+
+    def label(x, place):
+        return f"{x['rule']} {place}" + ("（断片が変わった）" if x["message"] == _STALE else "")
+
+    out = [label(x, "全体") for x in res["deck"] if x["status"] == "pending"]
     for nn, pg in res["pages"].items():
-        out += [f"{x['rule']} S{nn}" for x in pg["deck_rules"] if x["status"] == "pending"]
+        out += [label(x, f"S{nn}") for x in pg["deck_rules"] if x["status"] == "pending"]
     return out

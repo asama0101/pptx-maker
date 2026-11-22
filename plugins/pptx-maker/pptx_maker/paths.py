@@ -47,6 +47,19 @@ def write_json(target, data) -> None:
         raise
 
 
+def write_text(target, text: str) -> None:
+    """同じフォルダの一時ファイルに書いてから置き換える（途中で止まっても、元のファイルは壊れない。改行は LF）。"""
+    target = Path(target)
+    fd, tmp = make_tmp(target.parent, f"{target.stem}-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        Path(tmp).replace(target)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
 def write_cfg(work, cfg: dict) -> None:
     write_json(Path(work) / "template.json", cfg)
 
@@ -142,3 +155,21 @@ def deck_dir(work: Path) -> Path:
 
 def deck_name(work: Path) -> str:
     return Path(work).name
+
+
+# 遷移（meta refresh など）は CSP で防げない。candidates.unsafe_parts と測定側（measure.py）の通信遮断が頼り。
+# 断片は素材を読んだ Claude が書くので、検査をすり抜けた script・外部 URL があっても外へ出さないための CSP。
+# `file:` は作業フォルダの theme.css・base.css・画像など、同じ PC の中の読み込み用（作業フォルダだけには絞れない。
+# 外へは出ないが、断片が書く参照は candidates.unsafe_parts が相対パスと data:image/ だけに絞る）。
+# review.html は何も外から読まない（画像も data URI）ので、インラインの JS・CSS だけを許す。
+CSP_REVIEW = (
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; connect-src 'none'; "
+    "img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; "
+    "script-src-attr 'none'; form-action 'none'; base-uri 'none'; object-src 'none'; frame-src 'none'\">"
+)
+# final.html と、測定・検査用に包む html（作業フォルダのファイルを読む。インラインの script は許さない）
+CSP_FILE = (
+    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; connect-src 'none'; "
+    "img-src data: file:; font-src data: file:; style-src 'unsafe-inline' file:; script-src file:; "
+    "object-src 'none'; frame-src 'none'; form-action 'none'\">"
+)

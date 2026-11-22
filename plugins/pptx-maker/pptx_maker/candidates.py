@@ -63,12 +63,150 @@ def collect(work: Path) -> dict[str, dict[str, str]]:
     if not found:
         raise ValueError(f"{d} に NN-R1.html の形のファイルがありません")
     out: dict[str, dict[str, str]] = {}
+    unsafe: list[str] = []
     for nn, fs in found.items():
         for f in fs:
             key = _NAME.match(f.name).group(2)
+            text = paths.read_text(f)
+            unsafe.extend(f"{nn}-{key}.html: {why}" for why in unsafe_parts(text))
             # 絵（pp-picture）の SVG の id は案ごとに一意にする（別の絵の定義に引かれて、アイコンや矢じりが消えない）
-            out.setdefault(nn, {})[key] = svgids.uniquify(paths.read_text(f), f"s{nn}{key.lower()}-")
+            out.setdefault(nn, {})[key] = svgids.uniquify(text, f"s{nn}{key.lower()}-")
+    if unsafe:
+        raise ValueError("\n".join(sorted(unsafe)) + f"\n直し方: {_FIX}")
     return out
+
+
+# 断片で使えないタグ（script・入れ子の文書・外へ出る・遷移するもの。title 以下は、HTMLParser とブラウザで
+# 中身の読み方が違い（SVG の中では中の要素が実際の要素になる）、検査をすり抜けさせられるもの）。見本の断片は使っていない
+_BAD_TAGS = {
+    "script", "iframe", "frame", "frameset", "object", "embed", "applet",
+    "meta", "base", "link", "form", "animate", "set",
+    "title", "xmp", "plaintext", "textarea", "noembed", "noframes", "noscript", "template", "select", "math",
+}  # fmt: skip
+_URL_ATTRS = {
+    "src", "href", "xlink:href", "poster", "action", "formaction", "data", "srcset",
+    "ping", "background", "lowsrc", "dynsrc", "longdesc", "cite", "manifest", "codebase", "archive", "icon",
+}  # fmt: skip
+_CSS_BAD = re.compile(r"@import|image-set|cross-fade|\bimage\(|\bsrc\(|expression\(|-moz-binding|\\", re.IGNORECASE)
+_CSS_URL_START = re.compile(r"url\(", re.IGNORECASE)
+_CSS_URL_MAX = 2000  # url( の中身を見る長さ。閉じ括弧のない url( が大量に並んでも二次時間にしない
+# `<img/src=x/onerror=…>` は、URL 属性の値の一部としても読める（読み方が違う）
+_SLASH_ON = re.compile(r"/on[a-z]+\s*=", re.IGNORECASE)
+_ON_ATTR = re.compile(r"on[a-z]+")
+# 生のテキスト全体（コメント・RCDATA の中も含む）に出てはいけないもの。パース結果に関係なく誤りとみなす。
+# 本文に `<meta` と書くときは `&lt;meta` と書く
+_RAW_TAG = re.compile(r"<(?:" + "|".join(sorted(_BAD_TAGS)) + r")(?![\w-])|http-equiv|srcdoc", re.IGNORECASE)
+# `<!-->`・`<!--->`・`<!--!>` と `--!>` は、ブラウザでは（空の）コメントの終わりで、HTMLParser とは読み方が違う
+_ODD_COMMENT = re.compile(r"<!--(?:>|->|!>)|--!>")
+_FIX = "画像は作業フォルダの相対パス（material/a.png など）で書く。外部 URL・script・iframe・meta などは使わない"
+
+
+def _bad_url(value: str) -> bool:
+    """断片に書けない URL か。許可は、空・#id・スキームのない相対パス・data:image/ だけ。
+    ブラウザが無視する制御文字・空白（java<TAB>script: など）は除いてから見る。
+    `file:` は作業フォルダ限定にできないので許さない（画像は相対パスで書く）。"""
+    v = re.sub(r"[\x00-\x20]", "", value).lower()
+    if not v or v.startswith(("#", "data:image/")):
+        return False
+    if v.startswith(("\\", "//", "/\\")):
+        return True
+    return re.match(r"[^/?#]*:", v) is not None
+
+
+def _strip_css_comments(css: str) -> str:
+    out, i = [], 0
+    while (a := css.find("/*", i)) >= 0:
+        out.append(css[i:a])
+        b = css.find("*/", a + 2)
+        if b < 0:  # 閉じていないコメントは最後まで
+            return "".join(out)
+        i = b + 2
+    out.append(css[i:])
+    return "".join(out)
+
+
+def _css_problem(css: str) -> str | None:
+    """CSS に書けないもの（当たった語）。なければ None。"""
+    c = _strip_css_comments(css)
+    if m := _CSS_BAD.search(c):
+        return "バックスラッシュ（CSS のエスケープ \\ は使わず、文字を直接書く）" if m.group() == "\\" else m.group()
+    for m in _CSS_URL_START.finditer(c):
+        v = c[m.end() : m.end() + _CSS_URL_MAX].split(")", 1)[0].lstrip(" \t\r\n\f'\"")
+        if _bad_url(v):
+            return f"url({v[:40]})"
+    return None
+
+
+class _UnsafeScan(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__()
+        self.found: list[str] = []
+        self._style: list[str] | None = None  # <style> の中身（閉じるまで集める）
+
+    def _add(self, why: str) -> None:
+        self.found.append(f"{self.getpos()[0]} 行目: {why}")
+
+    def handle_starttag(self, tag: str, attrs: list) -> None:
+        if tag in _BAD_TAGS:
+            self._add(f"<{tag}> は書けません")
+        self._style = [] if tag == "style" else None
+        for name, value in attrs:
+            v = value or ""
+            if _ON_ATTR.fullmatch(name) or name == "srcdoc":
+                self._add(f"{name}= 属性は書けません")
+            elif name in _URL_ATTRS and _SLASH_ON.search(v):
+                self._add(f'{name}="{v.strip()[:40]}" は書けません（on…= 属性に読めるもの）')
+            elif name in _URL_ATTRS and any(_bad_url(u) for u in (v.split(",") if name == "srcset" else [v])):
+                self._add(f'{name}="{v.strip()[:40]}" は書けません（外部 URL・javascript: など）')
+            elif name == "style" and (why := _css_problem(v)):
+                self._add(f"style 属性に {why} は書けません")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "style" and self._style is not None:
+            self._check_style()
+        self._style = None
+
+    def handle_data(self, data: str) -> None:
+        if self._style is not None:
+            self._style.append(data)
+
+    def unknown_decl(self, data: str) -> None:
+        self._add("<![ ... ]> は書けません（CDATA など。ブラウザと読み方が違い、検査をすり抜ける）")
+
+    def _check_style(self) -> None:
+        css = "".join(self._style or [])
+        if "<" in css.replace("<![CDATA[", "").replace("]]>", ""):
+            self._add("<style> の中に < は書けません（SVG の中では要素として読まれる）")
+        elif why := _css_problem(css):
+            self._add(f"<style> に {why} は書けません")
+
+    def close(self) -> None:
+        super().close()
+        if self._style is not None:  # 閉じていない <style>
+            self._check_style()
+
+
+def unsafe_parts(html: str) -> list[str]:
+    """断片に書けないもの（_BAD_TAGS のタグ・on*・srcdoc・許可外の URL と CSS）の説明。なければ空。
+    SVG の xmlns のような名前空間宣言は URL 属性ではないので対象外。"""
+    scan = _UnsafeScan()
+    scan.feed(html)
+    scan.close()
+    found = scan.found
+    # 第 2 の検査: パース結果に頼らず生のテキストを見る（読み方の差でパーサの目に入らないものを拾う）
+    for m in _ODD_COMMENT.finditer(html):
+        found.append(f"{_line(html, m.start())} 行目: {m.group()} は書けません（ブラウザと読み方が違うコメント）")
+    for m in _RAW_TAG.finditer(html):
+        found.append(
+            f"{_line(html, m.start())} 行目: {m.group()} が書かれています（コメントでも不可。文字は &lt; で書く）"
+        )
+    if "javascript:" in re.sub(r"[\x00-\x1f]", "", html).lower():
+        found.append("javascript: が書かれています（コメント・本文でも書けません）")
+    return list(dict.fromkeys(found))
+
+
+def _line(text: str, pos: int) -> int:
+    return text.count("\n", 0, pos) + 1
 
 
 _MAIN_CLASS = re.compile(r"""class\s*=\s*["'][^"']*\bpp-(?:chart|table|picture|image)(?![\w-])""")

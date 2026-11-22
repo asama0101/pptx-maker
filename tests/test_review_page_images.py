@@ -71,17 +71,10 @@ def test_svg_image_href_and_xlink_href(tmp_path):
 
 
 def test_other_references_untouched(tmp_path):
-    frag = (
-        '<img src="data:image/png;base64,AAAA"><img src="https://example.com/a.png">'
-        '<img src="http://example.com/b.png"><img src="file:///C:/x.png">'
-        '<svg><use href="#id"/><image href="#id"/></svg>'
-    )
+    frag = '<img src="data:image/png;base64,AAAA"><svg><use href="#id"/><image href="#id"/></svg>'
     html = _html(_work(tmp_path, frag))
     for s in (
         "data:image/png;base64,AAAA",
-        "https://example.com/a.png",
-        "http://example.com/b.png",
-        "file:///C:/x.png",
         'href="#id"',
     ):
         assert s in html

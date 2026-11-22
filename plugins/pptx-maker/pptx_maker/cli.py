@@ -161,9 +161,12 @@ def _as_page(html: Path, work: Path):
     if not _LEADING_COMMENTS.sub("", text).startswith("<section"):  # 見本を写した断片は、先頭に用途のコメントがある
         yield html
         return
+    from . import measure
+
+    measure.check_not_unc(work)  # 包んだページは作業フォルダの外に置かれ、測定側の検査が work を見ないので、ここで断る
     base = work.resolve().as_uri() + "/"  # 断片の中の相対パス（icons/・material/）も作業フォルダから引く
     wrapped = (
-        f'<!doctype html><html lang="ja"><head><meta charset="utf-8"><base href="{base}">'
+        f'<!doctype html><html lang="ja"><head><meta charset="utf-8">{paths.CSP_FILE}<base href="{base}">'
         '<link rel="stylesheet" href="theme.css"><link rel="stylesheet" href="base.css">'
         '<script src="chart-preview.js" defer></script></head><body>' + text + "</body></html>"
     )
@@ -240,7 +243,7 @@ def cmd_build(args) -> int:
     if out.exists() and not args.force:
         print(
             f"エラー: {out} は既に存在します。"
-            "上書きしてよければ --force、別の名前で出すなら --out <パス> を付けてください。",
+            "上書きしてよければ build-overwrite、別の名前で出すなら --out <パス> を付けてください。",
             file=sys.stderr,
         )
         return 4
@@ -347,13 +350,14 @@ def cmd_review_page(args) -> int:
 
 
 def cmd_choices_import(args) -> int:
-    from . import candidates, choices, design_colors, directions
+    from . import candidates, choices, design_colors, directions, rulebook
 
     work = paths.resolve_work(args.workdir)
     if code := _no_cfg(work):
         return code
     try:
-        valid = {nn: sorted(c) for nn, c in candidates.collect(work).items()}
+        cands = candidates.collect(work)
+        valid = {nn: sorted(c) for nn, c in cands.items()}
         text = paths.read_text(args.file)
         color = choices.color_of(text)  # 不正な色は、選択を書く前に断る
         key = choices.direction_of(text)
@@ -372,7 +376,29 @@ def cmd_choices_import(args) -> int:
             if direction:
                 directions.set_current(work, direction["name"])
 
-        commented = choices.import_text(work, text, valid, before_write=before_write if color or direction else None)
+        rulebook.read_reviews(work)  # 判定の記録が壊れていれば、選択を書き換える前に止める
+        before = choices.read_state(work)
+
+        def clear_stale(parsed: dict[str, dict]) -> None:
+            # 承認し直しで、承認した断片の指紋が前回（旧形式の None を含む）と変わったページは、AI 判定が古い。
+            # 選択を書く前に消す（ここで失敗すれば選択は書かれず、同じ JSON を貼り直せる）
+            for nn, page in parsed.items():
+                if (
+                    page["status"] == "approved"
+                    and nn in before
+                    and before[nn]["status"] == "approved"
+                    and choices.frag_of(work, nn) != page.get("frag")
+                ):
+                    rulebook.clear_reviews(work, page=nn)
+
+        commented = choices.import_text(
+            work,
+            text,
+            valid,
+            before_write=before_write if color or direction else None,
+            cands=cands,
+            on_parsed=clear_stale,
+        )
     except (OSError, ValueError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 2
@@ -536,26 +562,47 @@ def entry(argv: list[str]) -> int:
         return 2
 
 
-def main(argv: list[str]) -> int:
-    ap = argparse.ArgumentParser(prog="pptx-maker")
-    ap.add_argument("--version", action="version", version=f"pptx-maker {__version__}")
-    sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
-    p = sub.add_parser("init")
+def _init_args(p) -> None:
     p.add_argument("workdir")
     p.add_argument("--template", default=None, help="利用者の .potx / .pptx")
     p.add_argument(
         "--footer",
         default=None,
-        help='左下に出すコピーライトの文字列（例: "© 2026 〇〇"）。省略すると空欄（--force なら既存の値を残す）',
+        help='左下に出すコピーライトの文字列（例: "© 2026 〇〇"）。省略すると空欄（init-overwrite なら既存の値を残す）',
     )
-    p.add_argument("--force", action="store_true")
-    p.set_defaults(fn=cmd_init)
-    p = sub.add_parser("template-import", help="利用者のテンプレート（.potx / .pptx）を、名前を付けて置き場に登録する")
+
+
+def _template_import_args(p) -> None:
     p.add_argument("path")
     p.add_argument("--name", default=None, help="登録名。省略するとファイル名（拡張子なし）")
-    p.add_argument("--force", action="store_true", help="同じ名前があれば置き換える")
-    p.set_defaults(fn=cmd_template_import)
+
+
+def _build_args(p) -> None:
+    p.add_argument("workdir")
+    p.add_argument("--footer", default=None)
+    p.add_argument("--out", default=None, help="PPTX の出力先（省略すると <出力先>/<成果物名>.pptx）")
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(prog="pptx-maker")
+    ap.add_argument("--version", action="version", version=f"pptx-maker {__version__}")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
+    # 上書き版は別のサブコマンド（権限の許可リストに入れない）。引数は通常版と同じ
+    p = sub.add_parser("init")
+    _init_args(p)
+    p.set_defaults(fn=cmd_init, force=False)
+    p = sub.add_parser("init-overwrite", help="空でない作業フォルダを上書きして作り直す（利用者の承認のあとだけ）")
+    _init_args(p)
+    p.set_defaults(fn=cmd_init, force=True)
+    p = sub.add_parser("template-import", help="利用者のテンプレート（.potx / .pptx）を、名前を付けて置き場に登録する")
+    _template_import_args(p)
+    p.set_defaults(fn=cmd_template_import, force=False)
+    p = sub.add_parser(
+        "template-overwrite", help="同じ名前の登録済みテンプレートを置き換えて登録する（利用者の承認のあとだけ）"
+    )
+    _template_import_args(p)
+    p.set_defaults(fn=cmd_template_import, force=True)
     sub.add_parser("template-list", help="登録済みのテンプレートの一覧").set_defaults(fn=cmd_template_list)
     p = sub.add_parser("template-remove", help="登録済みのテンプレートを消す（作成済みの成果物には影響しない）")
     p.add_argument("name")
@@ -568,11 +615,11 @@ def main(argv: list[str]) -> int:
     p.add_argument("--workdir", default=None)
     p.set_defaults(fn=cmd_check)
     p = sub.add_parser("build")
-    p.add_argument("workdir")
-    p.add_argument("--footer", default=None)
-    p.add_argument("--out", default=None, help="PPTX の出力先（省略すると <出力先>/<成果物名>.pptx）")
-    p.add_argument("--force", action="store_true", help="既存の PPTX を上書きする")
-    p.set_defaults(fn=cmd_build)
+    _build_args(p)
+    p.set_defaults(fn=cmd_build, force=False)
+    p = sub.add_parser("build-overwrite", help="既存の PPTX を上書きして書き出す（利用者の承認のあとだけ）")
+    _build_args(p)
+    p.set_defaults(fn=cmd_build, force=True)
     p = sub.add_parser("clean")
     p.add_argument("workdir")
     p.set_defaults(fn=cmd_clean)

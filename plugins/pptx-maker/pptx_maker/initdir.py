@@ -42,7 +42,7 @@ def write_derived(work: Path, cfg: dict) -> list[str]:
 
 
 def _existing_cfg(work: Path) -> dict:
-    """--force のとき、渡されなかった項目を残すために既存の template.json を読む。読めなければ空。"""
+    """init-overwrite のとき、渡されなかった項目を残すために既存の template.json を読む。読めなければ空。"""
     try:
         return paths.read_cfg(work)
     except (OSError, ValueError):
@@ -52,7 +52,7 @@ def _existing_cfg(work: Path) -> dict:
 def init(workdir, template_path=None, force: bool = False, footer: str | None = None) -> dict:
     work = paths.resolve_work(workdir)  # <出力先>/pptx-maker-source/<成果物名>
     if work.exists() and any(work.iterdir()) and not force:
-        raise FileExistsError(f"{work} は空ではありません。中身を確認し、上書きしてよければ --force を付けてください")
+        raise FileExistsError(f"{work} は空ではありません。上書きしてよければ init-overwrite を使ってください")
     old = _existing_cfg(work) if force else {}
     if footer is None:
         footer = old.get("footer")
@@ -87,7 +87,7 @@ def init(workdir, template_path=None, force: bool = False, footer: str | None = 
         cfg["color"] = old["color"]
     paths.write_cfg(work, cfg)
     design = work / "design.md"
-    if not design.exists():  # 設計図の雛形。--force でも利用者が書いた設計図は上書きしない
+    if not design.exists():  # 設計図の雛形。init-overwrite でも利用者が書いた設計図は上書きしない
         shutil.copyfile(paths.ASSETS / "sample" / "design.md", design)
     notes = list(info.notes) + write_derived(work, cfg)
     (work / "slides").mkdir(exist_ok=True)

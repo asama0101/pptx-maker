@@ -3,6 +3,8 @@
 import re
 from pathlib import Path
 
+from . import paths
+
 _CANDIDATES = re.compile(r"^\s*(?:-\s+)?デザイン方向の候補\s*[:：][ \t]*(.*?)\s*$", re.MULTILINE)
 _CURRENT = re.compile(r"^\s*(?:-\s+)?デザイン方向\s*[:：][ \t]*(.+?)\s*$", re.MULTILINE)
 _SPLIT = re.compile(r"[,、]")
@@ -10,7 +12,7 @@ _SPLIT = re.compile(r"[,、]")
 
 def _read(work: Path) -> str | None:
     path = Path(work) / "design.md"
-    return path.read_text(encoding="utf-8") if path.is_file() else None
+    return paths.read_text(path) if path.is_file() else None
 
 
 def candidate_list(work: Path) -> dict[str, str] | None:
@@ -53,4 +55,4 @@ def set_current(work: Path, name: str) -> None:
         text = pat.sub(lambda m: f"{m.group(1)}デザイン方向: {name}", text, count=1)
     else:
         text = text.rstrip("\n") + f"\n- デザイン方向: {name}\n"
-    (Path(work) / "design.md").write_text(text, encoding="utf-8", newline="\n")
+    paths.write_text(Path(work) / "design.md", text)

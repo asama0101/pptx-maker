@@ -1,4 +1,4 @@
-"""init --force は、明示しなかったフッター・テンプレートを保つ。"""
+"""init-overwrite は、明示しなかったフッター・テンプレートを保つ。"""
 
 # ruff: noqa: S101  # pytest の assert
 import json
@@ -36,7 +36,7 @@ def deck(tmp_path):
     return base, work, tbytes
 
 
-def test_forceだけならフッター_テンプレートを保つ(deck):
+def test_overwriteだけならフッター_テンプレートを保つ(deck):
     base, work, tbytes = deck
     initdir.init(base, force=True)
     after = _cfg(work)
@@ -44,9 +44,9 @@ def test_forceだけならフッター_テンプレートを保つ(deck):
     assert (work / after["template"]).read_bytes() == tbytes
 
 
-def test_CLIのforceだけならフッター_テンプレートを保つ(deck):
+def test_CLIのinit_overwriteだけならフッター_テンプレートを保つ(deck):
     base, work, tbytes = deck
-    assert cli.main(["init", str(base), "--force"]) == 0
+    assert cli.main(["init-overwrite", str(base)]) == 0
     after = _cfg(work)
     assert after["footer"] == "© 2026 A"
     assert (work / after["template"]).read_bytes() == tbytes
@@ -74,7 +74,7 @@ def test_テンプレートの色が設計図に色の行がないとき基調�
     assert design_colors.load_for(work, cfg).accent == theme.derive(accents[0]).accent
 
 
-def test_旧形式の色はinit_forceで引き継がれる(tmp_path):
+def test_旧形式の色はinit_overwriteで引き継がれる(tmp_path):
     from pptx_maker import design_colors
 
     work = tmp_path / "out" / "pptx-maker-source" / "deck"

@@ -3,6 +3,8 @@
 選択結果は、スライド 1 枚につき 1 ファイル `<dir>/choices/<NN>.json`（NN はスライド番号 2 桁）。
 中身は `{"at": …, "comment": "…", "pick": "R3", "status": "saved" | "approved"}`。人の確認があるページだけ、
 `"checks": {"R32": true, …}`（ルール ID → 確認したか）が付く（任意。なくてもよい）。
+承認済み（approved）のページには、承認した断片の指紋 `"frag"`（`fragment_hash`）も付く。`finalize` が、承認のあとで
+断片が変わっていないかを照合する（`load` には含めず、`frag_of` で読む。選択ページの指紋や検査値に影響しない）。
 選択ページの「Claude に渡す」がコピーする JSON は
 `{"pptx-maker-review": 1, "base": <choices の指紋>, "check": <pages の検査値>,
 "pages": {"<NN>": {pick, status, comment[, checks]}}}`。"""
@@ -45,6 +47,27 @@ def load(base: Path) -> dict[str, dict]:
     return out
 
 
+def fragment_hash(html: str) -> str:
+    """断片の HTML の指紋（sha1 の先頭 12 桁）。承認した内容と、いまの断片が同じかを照合する。"""
+    return hashlib.sha1(html.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
+
+
+def page_frag(variants: dict[str, str]) -> str:
+    """ページの全案（案の名前 → 断片の HTML）の指紋。AI 判定がどの断片に対するものかを結びつける。
+    案の追加・削除・修正のどれでも変わる（案の名前順に、名前と各断片の指紋を連結して指紋にする）。"""
+    return fragment_hash("\n".join(f"{k}:{fragment_hash(variants[k])}" for k in sorted(variants)))
+
+
+def frag_of(base: Path, nn: str) -> str | None:
+    """`choices/<NN>.json` に記録された承認時の断片の指紋。ない・読めないときは None。"""
+    try:
+        data = json.loads(paths.read_text(Path(base) / "choices" / f"{nn}.json"))
+    except (OSError, ValueError):
+        return None
+    frag = data.get("frag") if isinstance(data, dict) else None
+    return frag if isinstance(frag, str) and frag else None
+
+
 _STATUS = ("saved", "approved")
 _NN = re.compile(r"[0-9]{2}")
 _MARK = '{"pptx-maker-review"'
@@ -68,9 +91,16 @@ def stamp(base: Path) -> str:
     return hashlib.sha1(state.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
 
 
-def _parse(text: str, base: Path, valid: dict[str, list[str]] | None) -> dict[str, dict]:
+def _parse(
+    text: str,
+    base: Path,
+    valid: dict[str, list[str]] | None,
+    cands: dict[str, dict[str, str]] | None = None,
+) -> dict[str, dict]:
     """コピーされた JSON（前後の説明や ``` は無視する）を検査して、スライド番号 → 選択の辞書にする。
-    `valid`（スライド番号 → 案の名前の一覧）があれば、実在しない番号・案も断る。"""
+    `valid`（スライド番号 → 案の名前の一覧）があれば、実在しない番号・案も断る。
+    `cands`（スライド番号 → 案の名前 → 断片の HTML）があれば、承認済みのページは、利用者が見た断片の指紋 `fr` が
+    今の断片と一致するものだけ通す（断片が直されたあとの古いページ・古い localStorage からの承認を断る）。"""
     a = text.find(_MARK)
     try:
         data, _ = json.JSONDecoder().raw_decode(text[a:]) if a >= 0 else (None, 0)
@@ -103,6 +133,8 @@ def _parse(text: str, base: Path, valid: dict[str, list[str]] | None) -> dict[st
             errors.append(f"{nn}: 案 {pick} はありません（候補: {', '.join(valid[nn])}）")
         elif status == "approved" and (comment.strip() or pick is None):
             errors.append(f"{nn}: 承認済みにはコメントなし・案の選択済みが要ります")
+        elif status == "approved" and cands is not None and (msg := _stale_fr(d.get("fr"), cands.get(nn, {}), pick)):
+            errors.append(f"{nn}: {msg}")
         elif "checks" in d and not (
             isinstance(d["checks"], dict) and all(isinstance(v, bool) for v in d["checks"].values())
         ):
@@ -114,6 +146,20 @@ def _parse(text: str, base: Path, valid: dict[str, list[str]] | None) -> dict[st
     if errors:
         raise ValueError("\n".join(errors))
     return out
+
+
+def _stale_fr(fr: object, frags: dict[str, str], pick: str | None) -> str | None:
+    """承認のページの `fr` が、今の断片（`frags[pick]`）の指紋と合わなければ、その理由。合えば None。"""
+    if pick not in frags:
+        return None  # 案がないことは、別の検査が断る
+    if fr is None:
+        return (
+            "fr がありません。古いページから渡されています。review-page をやり直し、"
+            "新しい断片を見て承認し直してください"
+        )
+    if fr != fragment_hash(frags[pick]):
+        return "古い断片を承認しています。review-page をやり直し、新しい断片を見て承認し直してください"
+    return None
 
 
 _HEX = re.compile(r"#[0-9A-Fa-f]{6}")
@@ -188,12 +234,21 @@ def import_text(
     text: str,
     valid: dict[str, list[str]] | None = None,
     before_write: Callable[[], None] | None = None,
+    cands: dict[str, dict[str, str]] | None = None,
+    on_parsed: Callable[[dict[str, dict]], None] | None = None,
 ) -> list[dict]:
     """選択ページがコピーした JSON を `<base>/choices/<NN>.json` に書く（含まれないページは触らない）。
     検査が全部通ったあと、書く直前に `before_write` を呼ぶ（配色など、選択と一緒に反映したいものを先に書く。
     ここで失敗すれば、選択は書かれず、同じ JSON をそのまま貼り直せる）。
+    `on_parsed` は、検査と `frag` の計算のあと、書く前に、書く内容（スライド番号 → ページ）を渡して呼ぶ。
+    `cands`（スライド番号 → 案の名前 → 断片の HTML）があれば、承認済みのページに選んだ断片の指紋 `frag` を書く。
     コメントのあるページを `[{"slide": "03", "comment": "…"}]` で返す。"""
-    parsed = _parse(text, base, valid)
+    parsed = _parse(text, base, valid, cands)
+    for nn, page in parsed.items():
+        if cands and page["status"] == "approved" and page["pick"] in cands.get(nn, {}):
+            page["frag"] = fragment_hash(cands[nn][page["pick"]])
+    if on_parsed:
+        on_parsed(parsed)  # 書く前の処理（`frag` を含む、書く内容を渡す）。失敗すれば何も書かない
     if before_write:
         before_write()
     _commit(base, parsed)

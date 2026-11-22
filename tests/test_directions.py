@@ -95,3 +95,22 @@ def test_set_current_replaces_adds_and_keeps_other_lines(tmp_path):
     _design(tmp_path, others)
     directions.set_current(tmp_path, "丙")
     assert (tmp_path / "design.md").read_text(encoding="utf-8") == others + "- デザイン方向: 丙\n"
+
+
+def test_set_current_は書き込みが途中で止まっても元の設計図を壊さない(tmp_path, monkeypatch):
+    _design(tmp_path, "# 設計図\n- デザイン方向: 甲\n")
+
+    def boom(self, target):
+        raise OSError("置き換えに失敗")
+
+    monkeypatch.setattr(Path, "replace", boom)
+    with pytest.raises(OSError, match="置き換えに失敗"):
+        directions.set_current(tmp_path, "乙")
+    assert (tmp_path / "design.md").read_text(encoding="utf-8") == "# 設計図\n- デザイン方向: 甲\n"
+    assert [p.name for p in tmp_path.iterdir()] == ["design.md"]  # 一時ファイルが残らない
+
+
+def test_UTF8_でない設計図は_ValueError(tmp_path):
+    (tmp_path / "design.md").write_bytes("# 設計図\n- デザイン方向: 甲\n".encode("cp932"))
+    with pytest.raises(ValueError, match="UTF-8"):
+        directions.current(tmp_path)
