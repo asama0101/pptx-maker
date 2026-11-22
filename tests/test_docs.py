@@ -433,7 +433,9 @@ def test_create_のページごとの_AI_判定は実装の_AI_PAGE_RULES_と一
     sys.path.insert(0, str(PKG))
     from pptx_maker import consulting
 
-    line = next(ln for ln in skill_text("create").splitlines() if "ページごとに判定するのは" in ln)
+    # 判定の手順を review-flow.md へ移した。見る場所は create と review-flow.md の合計
+    text = skill_text("create") + "\n" + read(PKG / "references" / "review-flow.md")
+    line = next(ln for ln in text.splitlines() if "ページごとに判定するのは" in ln)
     listed = set(re.findall(r"R\d{2}", line.split("ページごとに判定するのは", 1)[1].split("だけ", 1)[0]))
     assert listed == set(consulting._AI_PAGE_RULES)
     assert "利用者が足した AI のルールは、資料全体" in line

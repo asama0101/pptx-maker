@@ -1,6 +1,6 @@
 # HTML の書き方と描画の規準
 
-SKILL.md の 3・4 章の細則。断片（`<元データ>/slides/NN-X.html`）を書く前に読む。確認用の画像（`previews`）は、この HTML を Chromium で撮ったもので、PPTX の実描画ではない。型の一覧は [components.md](components.md)。
+読むとき: create の 3 章で、案を書く前（4 章でも使う）。何のための手順書か: 案の HTML（断片 `<元データ>/slides/NN-X.html`）の書き方と、PPTX に出る部品の規準。確認用の画像（`previews`）は、この HTML を Chromium で撮ったもので、PPTX の実描画ではない。型の一覧は、同じ 3 章で読む見本の一覧にある。
 
 ## HTML の書き方
 
@@ -17,9 +17,9 @@ SKILL.md の 3・4 章の細則。断片（`<元データ>/slides/NN-X.html`）�
 - 文字サイズは `:root` の変数で決まる（既定 px）: 題 `--fs-title`（37）・ヘッドメッセージ `--fs-lead`（27）・本文 `--fs-body`（19）・注記 `--fs-caption`（16）・出典・脚注 `--fs-source`（14）・表紙の題 `--fs-cover-title`（40）と副題 `--fs-cover-sub`（22）・小見出し `--fs-subhead`（22）、倍率 `--num-scale`（大きな数字）・`--chart-scale`（グラフ内の文字）。`data-role` は役割どおりの変数を引く。**断片に `font-size` を px で直書きしない**。役割は `data-role`（`title|lead|body|caption|display`）か `var(--fs-*)`、大きな数字は `calc(Npx*var(--num-scale))` で書く。直書きしてよいのは、変数にできない理由があるときだけ（理由をコメントに書く）。絵の見本（`assets/components/pictures/`）の `font-size` の直書き（37・27・19・16px）は `--fs-*` の既定値と同じ値で、断片では `data-role` に任せる。小見出し（箱・列の見出し）は `var(--fs-subhead)`。出典・脚注・そのほかの小さな文字（14px 前後）は `data-role="caption"` を付けて `var(--fs-source)` を使う（`caption` がないと 14pt 未満で `fontMin` に落ちる。注記の下限は 10pt）。
 - 本文 14pt（約 19px）以上、注記 10pt（14px）以上。出典を書くときだけ、`data-role="caption" data-chrome` で本文領域の下端（`top:calc(var(--area-y) + var(--area-h))`。標準は y 640〜664）に置く。領域が標準より狭いテンプレートでは、出典が上がって本文と重なるので、`overlap` の指摘に従って本文の位置を直す。
 - 視線誘導: 読む順は **Z の法則**（左上 → 右上 → 左下へ斜め → 右下）に従い、始点（題・結論）を左上、終点（承認を求める対象・結論）を右下まで届かせる。文の寄せ方は変えない（文は左寄せ。右寄せは数字の列だけ）。使える場面では次の 3 つも使う。**矢印効果**（矢印で読む順・因果を示す。循環は輪と矢印で回して見せ、直線の矢印だけにしない。矢印は矢じり付きで、手順・因果の図には必ず入れる）、**孤立効果**（目立たせたい点だけ色・大きさを変える。強調色の範囲で）、**類同の法則**（同じ種類の要素は形・色・大きさをそろえ、違う種類は変える）。
-- 画像はアイコン（`icons/<名前>-<accent|emphasis|white|gray>.svg`。名前は `icons.md` の一覧にあるものだけ。`alt` と `data-role="icon"` が必須。写真は `data-role="photo"`、ロゴは `data-role="logo"`）と利用者の写真だけ。書き方: `<img class="pp-image" src="icons/alert-accent.svg" alt="警告" data-role="icon" style="left;top;width;height">`。`alt` と `data-role` は Claude が守る規則で、検査はしない。
+- 画像はアイコン（`icons/<名前>-<accent|emphasis|white|gray>.svg`。名前は、同じ 3 章で読むアイコン一覧にあるものだけ。`alt` と `data-role="icon"` が必須。写真は `data-role="photo"`、ロゴは `data-role="logo"`）と利用者の写真だけ。書き方: `<img class="pp-image" src="icons/alert-accent.svg" alt="警告" data-role="icon" style="left;top;width;height">`。`alt` と `data-role` は Claude が守る規則で、検査はしない。
 - 重ねる図（ベン図など）は、重なる要素の両方に `data-overlap`。
-- 絵（`pp-picture`）: 型に当てはまらない図（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈）は、`<div class="pp-picture" data-alt="…" style="left;top;width;height"><svg viewBox="0 0 幅 高さ">…</svg></div>` と書く。`build` が絵の範囲だけを透過・3 倍の PNG にして、1 枚の画像として貼る（**絵の中身は PowerPoint で直せない**。題・ヘッドメッセージ・チャートタイトル・注釈は編集できる文字）。`data-alt`（絵の内容 1〜2 文）は必須（Claude が守る規則で、検査はしない）。絵の中の色は `sv-f-*`（塗り）・`sv-s-*`（線）のクラスか `var(--…)` だけ、文字は 20px 以上（注記は絵の外の `caption` に書く）。絵の内部の色・文字の大きさ・重なりは検査されないので、自分で守る。絵全体とほかの部品の重なり・本文領域外は検査される。書き方・部品・図の種類ごとの作法は [picture-craft.md](picture-craft.md)。
+- 絵（`pp-picture`）: 型に当てはまらない図（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈）は、`<div class="pp-picture" data-alt="…" style="left;top;width;height"><svg viewBox="0 0 幅 高さ">…</svg></div>` と書く。`build` が絵の範囲だけを透過・3 倍の PNG にして、1 枚の画像として貼る（**絵の中身は PowerPoint で直せない**。題・ヘッドメッセージ・チャートタイトル・注釈は編集できる文字）。`data-alt`（絵の内容 1〜2 文）は必須（Claude が守る規則で、検査はしない）。絵の中の色は `sv-f-*`（塗り）・`sv-s-*`（線）のクラスか `var(--…)` だけ、文字は 20px 以上（注記は絵の外の `caption` に書く）。絵の内部の色・文字の大きさ・重なりは検査されないので、自分で守る。絵全体とほかの部品の重なり・本文領域外は検査される。書き方・部品・図の種類ごとの作法は、絵を描くときに読む絵の作法。
 - グラフ: `data-chart='{"type":"bar|barh|line|pie|stacked|waterfall","categories":[…],"series":[{"name":"…","values":[…]}],"highlight":番号,"fmt":"#,##0","totals":[…],"axis":{"min":0,"max":600,"major":150}}'`。`axis`（任意）は値の軸の最小・最大・目盛の間隔を固定する。省くと自動。小グラフを並べるときは、全パネルに同じ `axis` を書く。`highlight` は番号の配列でもよい。`totals`（合計にする項目の番号）は `waterfall` だけ。`gap`（棒の間隔 %。0〜500、既定 60）も書ける。`categories` と各 `series` の `values` は同じ長さの数値の配列にし、`waterfall` の `series` は 1 つだけ。**不備は `check` では検出されず、`build` で初めて止まる**ので、書いたら自分で見直す。ブラウザのプレビューは近似で、実際は PowerPoint のグラフになる。
 
 ## 色の規約
@@ -52,18 +52,18 @@ SKILL.md の 3・4 章の細則。断片（`<元データ>/slides/NN-X.html`）�
   - 文字の大きさは `data-role` か `var(--fs-*)`。本文 14pt（約 19px）以上、注記 10pt（14px）以上（注記の下限は `data-role="caption"` か `data-chrome` を付けた文字だけ）。
   - 題・ヘッドメッセージ・出典の領域（ヘッダー・フッターの避ける帯）に、ほかの部品を置かない。
   - 重なり・はみ出しは `check` がエラーにする。重ねる図だけ `data-overlap`。
-- 構図・余白・強弱・視線の流れ・文字の階層の観点と、使わない装飾（グラデーション・影・アニメーション・Web フォントなど）は、[design-directions.md](design-directions.md) に書いた。案を書く前に、そこでデザイン方向の候補を選ぶ。
+- 構図・余白・強弱・視線の流れ・文字の階層の観点と、使わない装飾（グラデーション・影・アニメーション・Web フォントなど）は、design-directions.md に書いた（同じ 3 章で読む）。案を書く前に、そこでデザイン方向の候補を選ぶ。
 - 一覧にないアイコンや絵記号は、その場でインライン SVG に描く（色は `sv-f-*`・`sv-s-*`）。
 - 描いたら `check` で違反 0 件を確かめてから出す。ただしグラフ（`data-chart`）の不備は `check` に出ず、`build` で確定する。
 
 ## 案を書く（create の 3・4 章）
 
 - `NN` はページ番号 2 桁。文言・数字は案の間で同じにする。
-- `Rk` は方向 k の構図・密度・主役の種類・余白・視線で書く。同じ方向の案どうしは傾向をそろえ、ページごとの構図は設計する（design-directions.md の 4 章。見本をなぞらない）。候補の行がない作業フォルダ（旧形式）は、従来どおり全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案）。
+- `Rk` は方向 k の構図・密度・主役の種類・余白・視線で書く。同じ方向の案どうしは傾向をそろえ、ページごとの構図は設計する（デザイン方向の指針の 4 章。見本をなぞらない）。候補の行がない作業フォルダ（旧形式）は、従来どおり全ページ `NN-R1.html`〜`NN-R3.html`（2〜3 案）。
 - 方向どうしは色でなく、**構図**（旧形式は主役の種類）を変える。`data-variant="案の特徴"`。指針は上の「自由設計（R）の指針」。
-- `assets/components/` の断片は**見本**。写してもよいが、なぞらない（[components.md](components.md)・[patterns.md](patterns.md)）。グラフだけは `data-chart` で書く（ネイティブのグラフにするため）。
+- `assets/components/` の断片は**見本**。写してもよいが、なぞらない（見本の一覧と型の説明は、同じ 3 章で読む）。グラフだけは `data-chart` で書く（ネイティブのグラフにするため）。
 - 断片に `<script>`・`<iframe>`・`<meta>`・`<title>`・`<textarea>`・`<style>` 内の `<`・CDATA・`<!-->` 型のコメント・CSS のバックスラッシュと `image(`・`expression(`・`on*=` 属性・外部 URL・`javascript:`・`mailto:`・`tel:` は書かない。コメントや本文でも `<meta` などは書けない（`review-page`・`choices-import`・`finalize` がエラーで止める。当たった語はメッセージに出る）。画像・URL は作業フォルダの相対パスと `#id`、`data:image/` だけ。細則は上の「HTML の書き方」。
-- **絵**: 書き方・5 種の作法・素材の読み方・聞くことは [picture-craft.md](picture-craft.md)。素材が薄いときは、描く前に `AskUserQuestion` で聞く。図 1 枚だけの依頼も、表紙と絵のページの 2 枚で、この流れで作る。
+- **絵**: 書き方・5 種の作法・素材の読み方・聞くことは、絵を描くときに読む絵の作法。素材が薄いときは、描く前に `AskUserQuestion` で聞く。図 1 枚だけの依頼も、表紙と絵のページの 2 枚で、この流れで作る。
 - 最低限:
   - 1 枚 = `<section class="slide" data-layout="…">`（1280×720px）。部品は `pp-text`・`pp-shape`・`pp-line`・`pp-image`・`pp-table`・`pp-chart`・`pp-picture` だけ。**ほかのクラスは PPTX に出ない**。
   - 色は無彩色＋基調 1 色＋強調 1〜2 色の範囲（資料全体で数える。蛍光色は使わない。文字のコントラストは 4.5 以上）。`theme.css` の色の変数は使っても使わなくてもよい。題とヘッドメッセージの文字（既定は題 37px・リード 27px・BIZ UDPゴシック・左寄せ）は固定で、`chromeSpec` で検査される。変えるときは `<元データ>/rules.json`（`{"title": {"size_px", "align"}, "lead": {…}}`。`size_px` は theme.css に反映、`align` は検査だけ、フォントは固定）に書く。本文 14pt（約 19px）・注記 10pt（14px）以上、大きさは `data-role` か `var(--fs-*)`。

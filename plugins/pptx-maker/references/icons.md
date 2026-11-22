@@ -1,6 +1,8 @@
 # アイコン一覧
 
-`assets/icons/<名前>.svg`（24×24、線画、`currentColor`）。`init` が各アイコンを 4 色の `icons/<名前>-<accent|emphasis|white|gray>.svg` にして作業フォルダへ書く。断片では `<img class="pp-image" src="icons/<名前>-accent.svg" alt="…" data-role="icon" style="…">`（書き方は `html-rules.md`）。**ここにない名前は使わない**。ほかの絵記号は、その場でインライン SVG に描く（`base.css` の `sv-f-*`・`sv-s-*` クラスで色を付ける）。
+読むとき: create の 3 章で、案を書く前。何のための手順書か: 案で使えるアイコンの名前と使いどころ。
+
+`assets/icons/<名前>.svg`（24×24、線画、`currentColor`）。`init` が各アイコンを 4 色の `icons/<名前>-<accent|emphasis|white|gray>.svg` にして作業フォルダへ書く。断片では `<img class="pp-image" src="icons/<名前>-accent.svg" alt="…" data-role="icon" style="…">`（書き方は、同じ 3 章で読む HTML の書き方の規準）。**ここにない名前は使わない**。ほかの絵記号は、その場でインライン SVG に描く（`base.css` の `sv-f-*`・`sv-s-*` クラスで色を付ける）。
 
 | 名前 | 意味・使いどころ |
 |---|---|

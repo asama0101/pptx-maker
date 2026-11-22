@@ -1,6 +1,6 @@
 # 絵の作法（pp-picture）
 
-create の SKILL.md（3 章）から参照する。型（[components.md](components.md)）に当てはまらない図（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈など）を、SVG の「絵」として描く手順。見本は `assets/components/pictures/`（`traffic-flow`・`network`・`failure`・`self-intro`・`annotate`）、機器アイコンと矢じりの部品は `assets/pictures/parts.svg`。断片の部品の一般則は [html-rules.md](html-rules.md)。
+読むとき: create の 3 章で、絵（型に当てはまらない図）を描くとき。何のための手順書か: SVG の「絵」の描き方と作法。型（同じ 3 章で読む見本の一覧）に当てはまらない図（NW 構成図・トラフィックフロー・障害動作・自己紹介・画面への注釈など）を、SVG の「絵」として描く手順。見本は `assets/components/pictures/`（`traffic-flow`・`network`・`failure`・`self-intro`・`annotate`）、機器アイコンと矢じりの部品は `assets/pictures/parts.svg`。断片の部品の一般則は、同じ 3 章で読む HTML の書き方の規準。
 
 ## 絵とは
 
@@ -46,7 +46,7 @@ create の SKILL.md（3 章）から参照する。型（[components.md](compone
 
 ## 検査（`check`・`build`）
 
-[check-rules.md](check-rules.md) のうち、絵全体への `overlap`・`keepout`・`outOfSlide`。絵の中の文字の大きさ・重なり・色と `data-alt` は検査されないので、自分で確かめる。違反は 0 件にする。
+検査の一覧（create の 6 章で読む）のうち、絵全体への `overlap`・`keepout`・`outOfSlide`。絵の中の文字の大きさ・重なり・色と `data-alt` は検査されないので、自分で確かめる。違反は 0 件にする。
 
 ## 聞くこと（素材が薄いとき）
 
