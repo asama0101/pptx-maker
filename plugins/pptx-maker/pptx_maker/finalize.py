@@ -53,7 +53,7 @@ def finalize(work: Path, choices_dir: Path, home=None) -> Path:
     pending = consulting.pending_ai(work, home)
     if pending:
         problems.append(
-            "AI 判定が済んでいません: "
+            "AI 判定が済んでいません（記録がない、または「断片が変わった」ため判定し直しが要る）: "
             + "、".join(pending)
             + "（採点表で判定して rule-review-import で記録する。使わないルールは /pptx-maker:rules で無効にできる）"
         )

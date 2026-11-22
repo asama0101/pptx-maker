@@ -202,7 +202,7 @@ def _ai_reviews(pending):
     """pending_ai の「R01 全体」「R35 S02」を、全部 ok の判定にする。"""
     items = []
     for label in pending:
-        rule, place = label.split()
+        rule, place = label.split()[0], label.split()[1][:3]  # 「（断片が変わった）」の印は落とす
         items.append({"rule": rule, "page": "deck" if place == "全体" else place[1:], "status": "ok", "message": ""})
     return {"reviews": items}
 
@@ -472,3 +472,196 @@ def test_pick_だけ変えた承認は判定を消す(work, capsys):
     _seed_review(work)
     _import(work, capsys, {"01": {"pick": "R2", "status": "approved", "comment": ""}})
     assert _reviews(work) == set()
+
+
+# --- AI 判定の鮮度（記録時の断片の指紋 frag） ---
+
+
+def _record(work, home, *labels):
+    """pending_ai のうち labels（例 "R19 S02"）だけを ok で記録する。labels がなければ全部。"""
+    from pptx_maker import consulting
+
+    todo = [x for x in consulting.pending_ai(work, home) if not labels or x.split("（")[0] in labels]
+    rulebook.import_reviews(work, _ai_reviews(todo), home)
+
+
+def _rec(work, rule, page):
+    return next(r for r in rulebook.read_reviews(work) if (r["rule"], r["page"]) == (rule, page))
+
+
+def _pend_raw(work, home):
+    from pptx_maker import consulting
+
+    return consulting.pending_ai(work, home)
+
+
+def _pend(work, home):
+    """印（「（断片が変わった）」）を落とした、再判定が要る場所の一覧。"""
+    return [x.split("（")[0] for x in _pend_raw(work, home)]
+
+
+@pytest.fixture
+def scripted(work, tmp_path):
+    (work / "script.md").write_text(_SCRIPT, encoding="utf-8")
+    return work, tmp_path / "none"
+
+
+def test_rule_review_import_はページの判定だけに_frag_を付ける(scripted):
+    work, home = scripted
+    _record(work, home)
+    assert _rec(work, "R35", "02")["frag"] == choices.page_frag(candidates.collect(work)["02"])
+    assert "frag" not in _rec(work, "R01", "deck")
+    assert _pend(work, home) == []
+
+
+def test_判定のあとで断片を直すと_pending_に戻り_finalize_が止まる(scripted, tmp_path):
+    work, home = scripted
+    ch = tmp_path / "ch"
+    _choice(work, ch, "01")
+    _choice(work, ch, "02", "R1")
+    _record(work, home)
+    (work / "slides" / "02-R2.html").write_text("<section>TWO2 直した</section>", encoding="utf-8")  # 選ばれない案
+    pend = _pend(work, home)
+    assert "R35 S02" in pend
+    assert "R35 S01" not in pend
+    assert not any(p.endswith("全体") for p in pend)
+    from pptx_maker import consulting
+
+    msg = next(x for x in consulting.evaluate(work, home)["pages"]["02"]["deck_rules"] if x["rule"] == "R35")
+    assert (msg["status"], msg["by"]) == ("pending", "AI")
+    assert "断片が変わった" in msg["message"]
+    with pytest.raises(ValueError, match="AI 判定が済んでいません"):
+        finalize.finalize(work, ch, home=home)
+
+
+def test_断片が同じなら判定は有効のまま(scripted, tmp_path):
+    work, home = scripted
+    ch = tmp_path / "ch"
+    _choice(work, ch, "01")
+    _choice(work, ch, "02")
+    _record(work, home)
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1</section>", encoding="utf-8")  # 同じ中身で書き直す
+    assert _pend(work, home) == []
+    assert finalize.finalize(work, ch, home=home) == work / "final.html"
+
+
+def test_別ページの断片の変更では他のページの判定は有効(scripted):
+    work, home = scripted
+    _record(work, home)
+    (work / "slides" / "01-R1.html").write_text("<section>ONE 直した</section>", encoding="utf-8")
+    assert _pend(work, home) == []  # 表紙（S01）はページ単位の AI 判定がなく、S02 の判定は有効のまま
+
+
+def test_frag_のない古い記録は有効のまま(scripted):
+    work, home = scripted
+    _record(work, home)
+    data = json.loads((work / "rule-review.json").read_text(encoding="utf-8"))
+    for r in data["reviews"]:
+        r.pop("frag", None)
+    paths.write_json(work / "rule-review.json", data)
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    assert _pend(work, home) == []
+
+
+def test_saved_のまま断片を直したあとで初めて承認しても判定は_pending(scripted, capsys):
+    """以前の既知の穴: 承認 → 保存済み → 直して再承認。判定が消えない経路でも、断片が違えば pending。"""
+    work, home = scripted
+    _import(work, capsys, {"02": {"pick": "R1", "status": "saved", "comment": ""}})  # まだ承認していない
+    _record(work, home)
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    _import(work, capsys, {"02": {"pick": "R1", "status": "approved", "comment": ""}})  # 初めての承認
+    assert _rec(work, "R35", "02")  # clear_stale は消さない（以前の穴）
+    assert "R35 S02" in _pend(work, home)
+    _record(work, home, "R35 S02")
+    _import(work, capsys, {"02": {"pick": "R1", "status": "saved", "comment": ""}})  # 承認 → 保存済み
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 さらに直した</section>", encoding="utf-8")
+    assert "R35 S02" in _pend(work, home)
+
+
+def test_案の追加と削除でも判定は_pending(scripted):
+    work, home = scripted
+    _record(work, home)
+    extra = work / "slides" / "02-R3.html"
+    extra.write_text("<section>TWO3</section>", encoding="utf-8")
+    assert "R35 S02" in _pend(work, home)
+    _record(work, home, "R35 S02")
+    assert "R35 S02" not in _pend(work, home)
+    extra.unlink()
+    assert "R35 S02" in _pend(work, home)
+
+
+def test_pick_だけ変えても断片が同じなら判定は有効(scripted, capsys):
+    work, home = scripted
+    _import(work, capsys, {"02": {"pick": "R1", "status": "saved", "comment": ""}})
+    _record(work, home)
+    # saved の pick 変更は判定を消さない
+    _import(work, capsys, {"02": {"pick": "R2", "status": "saved", "comment": ""}})
+    assert _pend(work, home) == []
+
+
+def test_断片の検査に落ちている間は_ページの判定を記録できず_既存の記録は残る(scripted):
+    work, home = scripted
+    _record(work, home, "R35 S02")
+    before = (work / "rule-review.json").read_text(encoding="utf-8")
+    (work / "slides" / "99-X.html").write_text("<section>x</section>", encoding="utf-8")  # 名前が読めない
+    page = {"reviews": [{"rule": "R19", "page": "02", "status": "ok", "message": ""}]}
+    with pytest.raises(ValueError, match="断片の検査に落ちています"):
+        rulebook.import_reviews(work, page, home)
+    assert (work / "rule-review.json").read_text(encoding="utf-8") == before
+
+
+def test_deck_だけの記録は_断片の検査に落ちていても通る(scripted):
+    work, home = scripted
+    (work / "slides" / "99-X.html").write_text("<section>x</section>", encoding="utf-8")
+    deck = {"reviews": [{"rule": "R01", "page": "deck", "status": "ok", "message": ""}]}
+    assert rulebook.import_reviews(work, deck, home) == 1
+    assert "frag" not in _rec(work, "R01", "deck")
+
+
+def test_断片のないページには_ページの判定を記録できない(scripted):
+    work, home = scripted
+    (work / "script.md").write_text(_SCRIPT + "\n## S03 まとめ\n- layout: closing\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="スライド 03 に断片がありません"):
+        rulebook.import_reviews(work, {"reviews": [{"rule": "R19", "page": "03", "status": "ok", "message": ""}]}, home)
+    assert not (work / "rule-review.json").exists()
+
+
+def test_pending_ai_は断片が変わったものにだけ印を付ける(scripted):
+    work, home = scripted
+    _record(work, home, *[x for x in _pend(work, home) if x != "R35 S02"])  # R35 S02 は記録しない
+    assert _pend_raw(work, home) == ["R35 S02"]
+    _record(work, home, "R35 S02")
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    raw = _pend_raw(work, home)
+    assert "R35 S02（断片が変わった）" in raw
+    assert all(x.endswith("（断片が変わった）") for x in raw)
+
+
+@pytest.mark.parametrize("frag", ["", "abc", "ABCDEF012345", "0123456789abcd", 123])
+def test_不正な形式の_frag_は_ValueError(scripted, frag):
+    work, home = scripted
+    paths.write_json(
+        work / "rule-review.json",
+        {"reviews": [{"rule": "R35", "page": "02", "status": "ok", "message": "", "frag": frag}]},
+    )
+    with pytest.raises(ValueError, match="frag"):
+        rulebook.read_reviews(work)
+
+
+def test_review_html_は断片が変わった判定を_pending_で埋め込む(scripted):
+    import re
+
+    from pptx_maker import review_page
+
+    work, home = scripted
+    _record(work, home)
+
+    def r35():
+        review_page.build(work, measure=False)
+        html = (work / "review.html").read_text(encoding="utf-8")
+        data = json.loads(re.search(r'id="rv-data">(.*?)</script>', html, re.S)[1])
+        return next(x for x in data["pages"]["02"]["deck_rules"] if x["rule"] == "R35")["status"]
+
+    assert r35() == "ok"
+    (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
+    assert r35() == "pending"  # 表示側は pending を「AI判定待ち」と描く（test_review_page_checks）

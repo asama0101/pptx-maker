@@ -52,6 +52,12 @@ def fragment_hash(html: str) -> str:
     return hashlib.sha1(html.encode("utf-8"), usedforsecurity=False).hexdigest()[:12]
 
 
+def page_frag(variants: dict[str, str]) -> str:
+    """ページの全案（案の名前 → 断片の HTML）の指紋。AI 判定がどの断片に対するものかを結びつける。
+    案の追加・削除・修正のどれでも変わる（案の名前順に、名前と各断片の指紋を連結して指紋にする）。"""
+    return fragment_hash("\n".join(f"{k}:{fragment_hash(variants[k])}" for k in sorted(variants)))
+
+
 def frag_of(base: Path, nn: str) -> str | None:
     """`choices/<NN>.json` に記録された承認時の断片の指紋。ない・読めないときは None。"""
     try:
