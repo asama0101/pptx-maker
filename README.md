@@ -26,7 +26,7 @@
 | BIZ UDPゴシック | 推奨。入っていないと、PowerPoint で文字の折り返しがずれることがある |
 | Microsoft PowerPoint | 最終確認と、作成後の直しに使う |
 
-Claude Code で、次の 3 つを順に実行する。初回の `/pptx-maker:create` で、不足があれば取得を承認する。
+Claude Code で、次の 3 つを順に実行する。
 
 <img src="docs/images/install.svg" width="800" alt="導入の流れ。A: マーケットプレイスの追加、プラグインのインストール、プラグインの再読み込みを順に実行する。B: 初回の create で環境を診断し、不足があれば承認してライブラリと Chromium を取得する。">
 
@@ -37,8 +37,6 @@ Claude Code で、次の 3 つを順に実行する。初回の `/pptx-maker:cre
 ```
 
 `/` を入力して、候補に `pptx-maker:create` が出れば、インストールできている。
-
-初回の `/pptx-maker:create` は、先に動作環境を診断する（何も変えない）。ライブラリと Chromium がなければ、Claude が取得してよいかを聞くので、承認する。
 
 ライブラリは、プラグイン専用のフォルダ（`~/.claude/plugins/data/pptx-maker-<マーケットプレイス名>/`）に入る。パソコンの Python は変わらない。Chromium は、ほかのツールと共有する場所に入る。
 
