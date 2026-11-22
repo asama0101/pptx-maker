@@ -534,7 +534,7 @@ def _add_ai_results(
             v = mine.get(place)
             if v is None:
                 res = _res(r["id"], "pending", _PENDING, "AI")
-            elif v.get("frag") is not None and place in now and v["frag"] != now[place]:
+            elif v.get("frag") is not None and v["frag"] != now.get(place):
                 res = _res(r["id"], "pending", _STALE, "AI")
             else:
                 status = "warn" if v["status"] == "ng" and r["level"] != "必須" else v["status"]

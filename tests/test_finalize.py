@@ -665,3 +665,12 @@ def test_review_html_は断片が変わった判定を_pending_で埋め込む(s
     assert r35() == "ok"
     (work / "slides" / "02-R1.html").write_text("<section>TWO1 直した</section>", encoding="utf-8")
     assert r35() == "pending"  # 表示側は pending を「AI判定待ち」と描く（test_review_page_checks）
+
+
+def test_ページの断片がすべて消えたら_ページの判定は_pending_に戻る(scripted):
+    work, home = scripted
+    _record(work, home)
+    assert _pend(work, home) == []
+    for f in (work / "slides").glob("02-R*.html"):  # 末尾のページなので、番号の連続は崩れない
+        f.unlink()
+    assert "R35 S02（断片が変わった）" in _pend_raw(work, home)

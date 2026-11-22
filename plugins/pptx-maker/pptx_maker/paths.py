@@ -47,6 +47,19 @@ def write_json(target, data) -> None:
         raise
 
 
+def write_text(target, text: str) -> None:
+    """同じフォルダの一時ファイルに書いてから置き換える（途中で止まっても、元のファイルは壊れない。改行は LF）。"""
+    target = Path(target)
+    fd, tmp = make_tmp(target.parent, f"{target.stem}-")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+        Path(tmp).replace(target)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
 def write_cfg(work, cfg: dict) -> None:
     write_json(Path(work) / "template.json", cfg)
 
