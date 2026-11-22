@@ -36,9 +36,7 @@ Claude Code で打つコマンドは、次の 4 つ。打たずに、文章で�
 - Excel・PDF を素材にするとき: `anthropic-skills:xlsx`・`anthropic-skills:pdf` が使えること
 - 推奨: BIZ UDPゴシック（なければ、PowerPoint で文字の折り返しがずれることがある）
 
-<img src="docs/images/install.svg" width="800" alt="導入の流れ。A: マーケットプレイスの追加、プラグインのインストール、プラグインの再読み込みを順に実行する。B: 初回の create で環境を診断し、不足があれば承認してライブラリと Chromium を取得する。">
-
-Claude Code で、次の 3 つを順に実行する。`/` を入力して、候補に `pptx-maker:create` が出れば完了。
+Claude Code で、次の 3 つを順に実行する。`/` を入力して、候補に `pptx-maker:create` が出れば完了。初回の `/pptx-maker:create` は、環境を診断し、ライブラリと Chromium がなければ取得の承認を求める。
 
 ```
 /plugin marketplace add asama0101/pptx-maker
@@ -71,7 +69,7 @@ Claude Code で `/pptx-maker:create` を実行するか、「稟議資料を作�
 
 案は、ブラウザで開く案の選択ページで選ぶ。選び終えたら「Claude に渡す」を押し、コピーされた内容を、ページを閉じる前にチャットへ貼り付ける。Claude が案の選択ページを作り直したら、開き直して承認する。
 
-<img src="docs/images/review-page.png" width="800" alt="案の選択ページの 1 スライド分。上に選んだ案、その下に 3 つの案の縮小、人が確認する項目、コメント欄、「承認」ボタンが並ぶ。">
+<img src="docs/images/review-page.png" width="800" alt="案の選択ページの 1 スライド分と、操作の順。上に選んだ案が大きく出る。1 その下の 3 つの案の縮小から案を選ぶ。2 コメント欄に直したい点を書く。3 人が確認する項目にチェックを入れる。4「承認」ボタンを押す。">
 
 ### できあがるもの
 
