@@ -350,7 +350,7 @@ def cmd_review_page(args) -> int:
 
 
 def cmd_choices_import(args) -> int:
-    from . import candidates, choices, design_colors, directions, rulebook
+    from . import candidates, choices, design_colors, rulebook
 
     work = paths.resolve_work(args.workdir)
     if code := _no_cfg(work):
@@ -360,21 +360,10 @@ def cmd_choices_import(args) -> int:
         valid = {nn: sorted(c) for nn, c in cands.items()}
         text = paths.read_text(args.file)
         color = choices.color_of(text)  # 不正な色は、選択を書く前に断る
-        key = choices.direction_of(text)
-        direction = None
-        if key is not None:
-            names = directions.candidate_list(work)
-            if names is None or key not in names:
-                listed = "、".join(f"{k}={v}" for k, v in (names or {}).items()) or "（候補の行がありません）"
-                raise ValueError(f"direction {key} は設計図のデザイン方向の候補にありません: {listed}")
-            direction = {"key": key, "name": names[key]}
 
-        # 配色→方向の順に、選択より先に書く。失敗しても選択は残らず、同じ JSON を貼り直せる（選択が先だと指紋が変わる）
+        # 配色を、選択より先に書く。失敗しても選択は残らず、同じ JSON を貼り直せる（選択が先だと指紋が変わる）
         def before_write() -> None:
-            if color:
-                design_colors.set_colors(work, color["accent"], [color["emphasis"]])
-            if direction:
-                directions.set_current(work, direction["name"])
+            design_colors.set_colors(work, color["accent"], [color["emphasis"]])
 
         rulebook.read_reviews(work)  # 判定の記録が壊れていれば、選択を書き換える前に止める
         before = choices.read_state(work)
@@ -395,7 +384,7 @@ def cmd_choices_import(args) -> int:
             work,
             text,
             valid,
-            before_write=before_write if color or direction else None,
+            before_write=before_write if color else None,
             cands=cands,
             on_parsed=clear_stale,
         )
@@ -404,11 +393,7 @@ def cmd_choices_import(args) -> int:
         return 2
     print(
         json.dumps(
-            {
-                "comments": commented,
-                **({"color": color} if color else {}),
-                **({"direction": direction} if direction else {}),
-            },
+            {"comments": commented, **({"color": color} if color else {})},
             ensure_ascii=False,
         )
     )

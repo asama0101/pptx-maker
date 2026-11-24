@@ -188,20 +188,6 @@ def color_of(text: str) -> dict | None:
     }
 
 
-def direction_of(text: str) -> str | None:
-    """コピーされた JSON の `direction`（案の選択ページでデザイン方向を変えたとき。"R2" など）。なければ None。
-    文字列でなければ ValueError（選択を書く前に確かめる）。"""
-    a = text.find(_MARK)
-    try:
-        data, _ = json.JSONDecoder().raw_decode(text[a:]) if a >= 0 else (None, 0)
-    except ValueError:
-        return None
-    direction = data.get("direction") if isinstance(data, dict) else None
-    if direction is not None and not isinstance(direction, str):
-        raise ValueError("direction は、R1 のような文字列にしてください")
-    return direction
-
-
 def _write(base: Path, nn: str, d: dict) -> None:
     f = Path(base) / "choices" / f"{nn}.json"
     f.parent.mkdir(parents=True, exist_ok=True)
