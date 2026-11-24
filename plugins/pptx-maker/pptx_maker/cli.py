@@ -330,6 +330,8 @@ def cmd_finalize(args) -> int:
 
 
 def cmd_review_page(args) -> int:
+    import webbrowser
+
     from . import candidates, review_page, script_lint
 
     work = paths.resolve_work(args.workdir)
@@ -343,6 +345,9 @@ def cmd_review_page(args) -> int:
         exempt = script_lint.exempt_ids(paths.read_text(script)) if script.is_file() else set()
         warnings = candidates.main_visual_warnings(candidates.collect(work), exempt)
         print(json.dumps({"path": str(page), "warnings": warnings + notes}, ensure_ascii=False))
+        if not args.no_open:
+            with contextlib.suppress(Exception):  # 開けない環境（CI など）でも review-page は成功にする
+                webbrowser.open(page.as_uri())
     except ValueError as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 2
@@ -624,6 +629,7 @@ def main(argv: list[str]) -> int:
     p.add_argument(
         "--no-measure", action="store_true", help="案を測らずに作る（R20・R23・R26 は build 時の表示のまま）"
     )
+    p.add_argument("--no-open", action="store_true", help="review.html をブラウザで開かない")
     p.set_defaults(fn=cmd_review_page)
     p = sub.add_parser("choices-import", help="選択ページがコピーした JSON のファイルを choices/<NN>.json に取り込む")
     p.add_argument("workdir")
