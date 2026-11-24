@@ -329,6 +329,16 @@ def cmd_finalize(args) -> int:
     return 0
 
 
+def _prefer_chrome(webbrowser) -> None:
+    """Chrome が入っていれば、既定のブラウザ（Edge など）より先に使う。なければ既定のまま。"""
+    for env_name in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA"):
+        base = os.environ.get(env_name)
+        exe = Path(base, "Google", "Chrome", "Application", "chrome.exe") if base else None
+        if exe and exe.is_file():
+            webbrowser.register("chrome", None, webbrowser.BackgroundBrowser(str(exe)), preferred=True)
+            return
+
+
 def cmd_review_page(args) -> int:
     import webbrowser
 
@@ -347,6 +357,7 @@ def cmd_review_page(args) -> int:
         print(json.dumps({"path": str(page), "warnings": warnings + notes}, ensure_ascii=False))
         if not args.no_open:
             with contextlib.suppress(Exception):  # 開けない環境（CI など）でも review-page は成功にする
+                _prefer_chrome(webbrowser)
                 webbrowser.open(page.as_uri())
     except ValueError as e:
         print(f"エラー: {e}", file=sys.stderr)
