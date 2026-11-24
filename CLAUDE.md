@@ -32,6 +32,20 @@ Windows 専用の Claude Code プラグイン `pptx-maker`（`plugins/pptx-maker
 
 **鉄板ルールの登録簿（`consulting.py` の `RULES`、R01〜R35）。** 検査の種類は 3 つ。**機械**（17 件。コードで判定。`where` は script_lint・candidates・check。ng にするか warn にするかは `_status`＝必須の機械検査は ng、`_WARN_ONLY` は近似なので warn）、**AI**（15 件。`rubric`＝採点表。Claude が判定し、作業フォルダの `rule-review.json`（利用者データ。`build` で消えない）に `rule-review-import` で記録する。ページごとの判定には、記録時のそのページの全案の指紋 `frag`（`choices.page_frag`。`rulebook.import_reviews` が付ける。`deck` には付けない。`collect` が通らない間・断片がないページのページ単位の判定は、記録を断る）が付き、`evaluate` は今の指紋と違う判定を `pending`（断片が変わった）にする（`frag` のない古い記録と `deck` は有効のまま。画像・`theme.css` の変更は検知しない。残る限界: `frag` は `rule-review-import` を実行した時点の断片に付くので、判定したあとで断片を編集し、判定し直さずに同じ内容で上書きすると有効になる（仕組みでは防げない。判定は、断片を直したあとの全案で行う）。`collect` が通らない間（断片の名前が読めない・案の数が合わない等）と、断片のないページには、ページ単位の判定を記録できない（`rule-review-import` が終了コード 2 で断る）。`deck` だけの記録は、断片を見ずに通る。`pending_ai` は、断片が変わって戻ったものに「（断片が変わった）」を付ける。`clear_stale`・`choices-resolve` の削除は二重の防御として残す）。`evaluate` は判定がなければ status `pending`、判定があれば AI の status をそのまま出す（必須でないルールの ng は warn））、**人**（3 件。`question`＝確認の質問。status `manual`）。`evaluate` の結果の各項目に `by`（機械・AI・人）が付き、戻り値の `human` が有効な人のルールの一覧。R25（1 枚の文字量）は `candidates.TEXT_MAX`。利用者の編集は `rulebook.py`: `<home_dir>/rules/custom.json`（`{"custom": [...], "overrides": {"R13": {...}}}`）に、組み込みの上書き（名前・説明・区分・採点表・質問・`enabled`。削除は不可。機械の組み込みは `kind` を変えられない）とカスタム（`C01`…。機械は正規表現の `scope`＝head・slide・script）を持つ。`consulting.effective_rules(home)` が有効なルールを返し、`evaluate(work, home)` はそれだけを検査する（`RULES` 定数は変えない）。CLI は `rule list [--kind] [--all]` と `rule apply --file ops.json [--dry-run]`（操作の配列を全部検証してから書く）の 2 つで、対話は `skills/rules/SKILL.md`（`/pptx-maker:rules`。利用者が起動したときだけ動く）が行う。
 
+## 動作解説ページ
+
+開発者向けの解説ページ（Claude が何を読み、何を実行し、何を標準出力に返すか）を `docs/plugin-walkthrough/` で管理する。文章は `page.html`、生成は `build.py`（標準ライブラリのみ）。使い方は `docs/development.md`。
+
+- `page.html` に、手順書・コードの写し、ファイルの大きさ、版、行番号、件数、標準出力を書かない。`{{…}}` で埋め、`build.py` が生成のたびにリポジトリから読む。
+- 次を変えたら、同じ PR で `build.py` を流してページを見直す。公開した Artifact はリポジトリと連動しないので、再生成して再公開する。
+
+| 変えたもの | 見直すもの |
+|---|---|
+| `SKILL.md`・`references/*.md` | `page.html` の説明文（カード・順序図・規則の表）。全文は自動で入れ替わる |
+| サブコマンドの出力・終了コード（`cli.py`・`run.py` ほか） | `page.html` の「止まる条件」の表と説明文。標準出力は自動で採り直す |
+| 原稿・断片・貼り付けの書式、`init` の雛形 | `build.py` のデモ（`demo/`・`make_fragments`・`Demo.collect`）。デモが通ること |
+| `review.html` の見た目 | `python docs/plugin-walkthrough/build.py --shoot` で画像を撮り直し、`SHOT_VERSION` を直す |
+
 ## 注意
 
 - **レビューページと、スライドのテーマが同じ DOM・同じ CSS 変数を共有する。** `review_page.py` のページ側の変数は `--rv-bg` のように接頭辞を付けてある。`--bg`・`--line`・`--text` などテーマ側（`theme.css`）と同名にすると、スライドの背景や罫線が上書きされて見えなくなる。
