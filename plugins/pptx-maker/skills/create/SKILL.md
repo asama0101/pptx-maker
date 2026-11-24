@@ -10,7 +10,10 @@ allowed-tools: 'Read(${CLAUDE_PLUGIN_ROOT}/references/*) Read(${CLAUDE_PLUGIN_RO
 
 テーマ・素材から、設計図（資料全体の目的・読み手と、各ページの題・ヘッドメッセージ（判断を言い切る 1 文）・論理）と原稿（それをスライドごとに写したもの）を書き、案を利用者にブラウザで選んでもらい（案の選択ページ `review.html`。選択・コメント・承認をする）、承認された案から、PowerPoint で編集できる `<出力先>/<成果物名>.pptx` を作る。
 
-コマンドはすべて `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" <サブコマンド>` の形で実行する（以下 `RUN <サブコマンド>` と書く）。`<出力先>` は聞かず、常にカレントディレクトリ（絶対パスにして使う）。`<元データ>` は作業フォルダ `<出力先>/pptx-maker-source/<成果物名>`（作業フォルダの引数は、すべて `"<元データ>"`）。参照ファイルは `${CLAUDE_PLUGIN_ROOT}/references/`、見本は `${CLAUDE_PLUGIN_ROOT}/assets/sample/` の下にあり、以下ファイル名だけで書く（references の中の `assets/…` も `${CLAUDE_PLUGIN_ROOT}` の下）。
+コマンドはすべて `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" <サブコマンド>` の形で実行する（以下 `RUN <サブコマンド>` と書く）。
+- `<出力先>`: 聞かず、常にカレントディレクトリ（絶対パスにして使う）。
+- `<元データ>`: 作業フォルダ `<出力先>/pptx-maker-source/<成果物名>`。作業フォルダの引数は、すべて `"<元データ>"`。
+- 参照ファイルは `${CLAUDE_PLUGIN_ROOT}/references/`、見本は `${CLAUDE_PLUGIN_ROOT}/assets/sample/` の下にあり、以下ファイル名だけで書く（references の中の `assets/…` も `${CLAUDE_PLUGIN_ROOT}` の下）。
 
 ## 用語
 | 用語 | 意味 |
@@ -38,7 +41,6 @@ allowed-tools: 'Read(${CLAUDE_PLUGIN_ROOT}/references/*) Read(${CLAUDE_PLUGIN_RO
 - 詳細のファイルを Read で読めなければ（承認が断られた・ファイルがない）、その手順に進まずに止まる。章の途中へ戻ったとき・会話の圧縮のあとは、読み直す。
 
 ## 0. 初回だけ（環境）
-目的: 仮想環境と chromium を確かめ、足りなければ承認を得て入れる。
 1. 環境を点検する（何も変えず、項目ごとの OK・NG を出す）。
    `RUN doctor`
    終了コード 3 は仮想環境がない・足りない。利用者に「`${CLAUDE_PLUGIN_DATA}` の下に専用の仮想環境と chromium（数百 MB）を入れてよいか」を確かめる。断られたら、作成を止めて報告する。
@@ -47,7 +49,6 @@ allowed-tools: 'Read(${CLAUDE_PLUGIN_ROOT}/references/*) Read(${CLAUDE_PLUGIN_RO
    バックグラウンドで実行して完了の通知を待つ（上限 10 分。超えたら止めて出力を報告する）。失敗したら、作成を止めて出力を報告する（再試行しない）。成功したら `doctor` をもう一度実行し、`[NG]` と `[任意]` の行を伝える。
 
 ## 1. 受け取る
-目的: 入力・成果物名・テンプレートを決め、作業フォルダを作る。
 参照ファイルを読むときに承認の確認が出ることがあると伝えてから、design-script.md の「入力とテンプレート」を Read で読む。チャットで次を聞く。足りない前提（対象者・目的・枚数・期限・欠けている数字）は、始める前にまとめて聞き、推測しない。
 - 入力（形式は同じ節）と成果物名 `<成果物名>`。PPTX か `<元データ>` が既にあれば、パスを伝えて「上書き」か「別の名前」かを聞く。
 - 基調色・強調色: 聞かない。利用者が最初に指定したときだけ設計図に書く（決め方は design-script.md の「入力とテンプレート」）。決めるのは、案の選択ページの「配色」。フッターのコピーライト（`--footer`）は聞く。
@@ -60,8 +61,6 @@ allowed-tools: 'Read(${CLAUDE_PLUGIN_ROOT}/references/*) Read(${CLAUDE_PLUGIN_RO
 - 空でないフォルダは終了コード 2。中身を見せて承認を得たあとだけ、上書き版の `init-overwrite`（引数は `init` と同じ）を実行する。上書きのあとは design-script.md の「入力とテンプレート」に従う。
 
 ## 2. 設計図と原稿
-目的: ページごとの題・ヘッドメッセージと論理を設計図で決め、原稿にして検査する。
-
 design-script.md の「設計図」「題とヘッドメッセージ」「原稿」を Read で読む。図から作り始めない。**数字を作らない**（素材に無い数字は、前提を明記した試算か「xx」）。素材に無い固有名詞・出来事も足さない。
 
 書式は見本の design.md（設計図）と script.md（原稿）。設計図の前に consulting-rules.md を、題とヘッドメッセージの前に head-rules.md を読む。
@@ -71,19 +70,16 @@ design-script.md の「設計図」「題とヘッドメッセージ」「原稿
 3. 6.1 を確かめて 3 章へ進む（承認は挟まない）。
 
 ## 3. 案を書く（`<元データ>/slides/`）
-目的: デザイン方向を決め、全ページの案を HTML で書く。
-
 design-directions.md と html-rules.md の「案を書く（create の 3・4 章）」を Read で読む。型の見本は components.md・patterns.md、アイコンは icons.md も読む。
 - **デザイン方向の候補**: 題材と読み手から、構成が違う方向を 3〜4 つ選ぶ。**名前と数だけ** `AskUserQuestion` で確かめる。確かめた候補を設計図に書く（書き方は design-directions.md の「2. 方向の選び方」）。
 - **全ページ（表紙・区切り・裏表紙も）で、候補の数だけ** `NN-R1.html`〜`NN-Rn.html` を書く。
 - **絵**（型にない図）: 案の中に `pp-picture` で描く。例と書き方は picture-craft.md（絵を描くときに読む）。
 
 ## 4. HTML の書き方
-目的: 案の HTML を、PPTX に出せる部品で書く。
-細則は html-rules.md（3 章で読んだもの）。
+案の HTML は、PPTX に出せる部品で書く。細則は html-rules.md（3 章で読んだもの）。
 
 ## 4.1 AI 判定（案を書いたあと、`review-page` の前）
-目的: AI の鉄板ルールを判定して記録する。判定は参考で、誤りうる。利用者に、そう伝える。
+判定は参考で、誤りうる。利用者に、そう伝える。
 
 review-flow.md の「AI 判定と状態」を Read で読み、「判定の手順」に従う。
 1. 有効な AI のルール（利用者が足した分も入る）を取る。
@@ -93,8 +89,6 @@ review-flow.md の「AI 判定と状態」を Read で読み、「判定の手�
 3. 有効な AI のルールに未判定（`pending`）が 1 つでもあると、`finalize` が止まる。使わないルールは `/pptx-maker:rules` で無効にする。
 
 ## 5. 案の選択（ローカルのページ）
-目的: 利用者に案を選んで承認してもらい、取り込む。
-
 review-flow.md を Read で読む。選択・承認・コメントはページの中に持ち、利用者が「Claude に渡す」でコピーしてチャットに貼る。
 1. 案の選択ページ（`<元データ>/review.html`）を作る。
    `RUN review-page "<元データ>"`
@@ -107,15 +101,13 @@ review-flow.md を Read で読む。選択・承認・コメントはページ�
 4. 次の動きを、review-flow.md の「次の動き」で決める（`comments` があるページは 5.1 へ。全ページ `approved` で `comments` が空なら 6 章へ）。
 
 ### 5.1 コメントで直す
-目的: コメントの直しを入れ、もう一度承認してもらう。全体の手順は review-flow.md の「コメントの修正ループ」。
+全体の手順は review-flow.md の「コメントの修正ループ」。
 
 `comments` にあるページの断片だけを、コメントが求めることだけ直したら、印を戻す。
 `RUN choices-resolve "<元データ>" <NN>…`（コメントを空にし、承認済みなら未承認に戻す。`pick` は残る。そのページの AI 判定の記録は消えるので、4.1 で判定し直す）
 `review-page` をやり直す。利用者に、何を直したかをページごとに伝え、直したページを開き直して承認し直してもらい、また貼られたら 5 章の 3 へ。
 
 ## 6. PPTX
-目的: 承認された案をまとめ、測って検査し、PPTX を書く。
-
 check-rules.md を Read で読む。
 1. 承認済みの案を 1 つの `final.html` にまとめる（`final.html` を書く）。
    `RUN finalize "<元データ>" --choices "<元データ>"`
@@ -129,5 +121,4 @@ check-rules.md を Read で読む。
 4. 作成後の直しは PowerPoint で行う。構成を変えるときは最初から作り直す。
 
 ### 6.1 自己確認
-目的: 原稿の仕上げ前と PPTX の引き渡し前に、品質を確かめる。直せない項目は「未達」と理由を報告する。
-項目は consulting-rules.md の 3 章と「create の 6.1 の項目」。
+原稿の仕上げ前と PPTX の引き渡し前に、品質を確かめる。直せない項目は「未達」と理由を報告する。項目は consulting-rules.md の 3 章と「create の 6.1 の項目」。
