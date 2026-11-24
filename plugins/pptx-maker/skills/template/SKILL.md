@@ -40,8 +40,6 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
 ## 手順
 
 ### 手順1: 登録する
-目的: 利用者のテンプレートを、名前を付けて置き場に登録する。
-
 1. 登録するファイルのパス（`.potx` または `.pptx`）を聞く。登録名は、省略するとファイル名（拡張子なし）になる。変えたいときだけ聞く。
 2. ファイルを置き場へ登録する。
    `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" template-import "<パス>" [--name "<登録名>"]`
@@ -50,15 +48,11 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
    - 終了コード 4: 同じ名前が既にある。「置き換える」か「別の名前にする」かを聞く。黙って置き換えない。置き換えるときは、承認を得たあとだけ `template-overwrite` を実行する（守ること）。
 
 ### 手順2: 一覧を見る
-目的: 登録済みのテンプレートを、利用者に見せる。
-
 登録済みの一覧を出す。
 `python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUGIN_DATA}" template-list`
 出力の `name`・`format`・`path` を表にして見せる。空の配列なら、「登録はない」と伝える。
 
 ### 手順3: 消す
-目的: 利用者が選んだ登録を、確認のうえで消す。
-
 1. 手順2 の `template-list` を実行して一覧を見せ、消す名前を選んでもらう。
 2. 「作成済みの成果物には影響しない」と伝え、消してよいかを確かめる。
 3. 登録を消す。
@@ -66,6 +60,4 @@ allowed-tools: 'Bash(python "${CLAUDE_PLUGIN_ROOT}/run.py" --data "${CLAUDE_PLUG
    終了コード 2 は、その名前がないとき。
 
 ### 手順4: 使い方を伝える
-目的: 登録したテンプレートの使いどころを、利用者に伝える。
-
 登録が済んだら、資料を作るとき（`/pptx-maker:create`）にテンプレートの有無を聞かれるので、そこで登録名を選べると伝える。
