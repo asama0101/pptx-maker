@@ -3,9 +3,8 @@
 ページごとに 1 枚のカード（`id="pg-NN"`）に、選んだ案を大きく、案が複数あれば縮小を並べる。案は Shadow DOM の中に
 1280x720 のまま入れて縮小して見せる（`theme.css` はページと各案の shadow root の両方に、`base.css` は shadow root に入れる。
 `:root` の変数はページから継承し、`.slide[data-layout=…]` の規則は shadow の中で効く）。選択・承認・コメントはページの
-中に持ち、「Claude に渡す」で `{"pptx-maker-review": 1, "pages": {"<NN>": {pick, status, comment}}[, "color": {name, accent, emphasis}][, "direction": "R2"]}` をコピーする
-（利用者がチャットに貼り、Claude が `choices-import` で `choices/<NN>.json` にする。`color` は配色セットを変えたときだけで、設計図の色になる。
-`direction` は設計図にデザイン方向の候補があり、利用者が全体の方向を切り替えたときだけ）。開いたときの状態は、
+中に持ち、「Claude に渡す」で `{"pptx-maker-review": 1, "pages": {"<NN>": {pick, status, comment}}[, "color": {name, accent, emphasis}]}` をコピーする
+（利用者がチャットに貼り、Claude が `choices-import` で `choices/<NN>.json` にする。`color` は配色セットを変えたときだけで、設計図の色になる）。開いたときの状態は、
 `choices/<NN>.json` から埋め込む（Claude が直したあとの作り直しで、選択と承認が残る）。"""
 
 import base64
@@ -15,7 +14,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import candidates, choices, color_sets, consulting, directions, paths
+from . import candidates, choices, color_sets, consulting, paths
 
 # 題の文字数の上限（左の一覧と見出しに出す）
 TITLE_CHARS = 24
@@ -33,7 +32,7 @@ _MIME = {
 _IMG_TAG = re.compile(r"<(img|image)\b(?:[^>\x22']|\x22[^\x22]*\x22|'[^']*')*>", re.IGNORECASE)
 _DATA_URI = re.compile(r"data:[\w.+/-]+;base64,[A-Za-z0-9+/=]+")
 _VARIANT = re.compile(r"\bdata-variant\s*=\s*\x22([^\x22]*)\x22")
-_PLACEHOLDER = re.compile(r"__(THEME|DATA|RULES|COLORS|DIRS|CHART|BASE|STATE|FR|STAMP)__")
+_PLACEHOLDER = re.compile(r"__(THEME|DATA|RULES|COLORS|CHART|BASE|STATE|FR|STAMP)__")
 # shadow root には body がないので、スライドの文字の書体と色は :host から継承させる
 _HOST_CSS = (
     ":host{font-family:'BIZ UDPGothic','BIZ UDPゴシック','BIZ UDGothic','Yu Gothic','Meiryo',sans-serif;"
@@ -139,8 +138,9 @@ label.rv-hc input { margin-top:4px; }
 <div id="rv">
   <header class="rvtop">
     <h1>スライド案の選択</h1>
-    <div class="rvprog"><div class="rvbar"><i id="bar"></i></div><span class="rvptxt" id="ptxt"></span><button class="rvbtn pri" type="button" id="share">Claude に渡す</button></div>
+    <div class="rvprog"><div class="rvbar"><i id="bar"></i></div><span class="rvptxt" id="ptxt"></span><button class="rvbtn pri" type="button" id="share">Claude に渡す</button><button class="rvbtn" type="button" id="rv-bulk" title="案を選んであり、コメントがなく、人の確認の項目が済んでいるページを、まとめて承認します">選択済みを一括承認</button></div>
     <p class="rvmsg" id="st"></p>
+    <p class="rvmsg" id="rv-bulk-msg" role="status"></p>
     <textarea class="rvout" id="out" readonly hidden></textarea>
     <nav class="rv-tabs" id="rv-tabs" role="tablist" hidden>
       <button class="rv-tab" type="button" role="tab" id="rv-tab-pick" data-tab="pick">案の選択</button>
@@ -160,7 +160,6 @@ label.rv-hc input { margin-top:4px; }
 <script type="application/json" id="data">__DATA__</script>
 <script type="application/json" id="rv-data">__RULES__</script>
 <script type="application/json" id="rv-color">__COLORS__</script>
-<script type="application/json" id="rv-dirs">__DIRS__</script>
 <script>__CHART__</script>
 <script>
 var BASE = __BASE__;
@@ -172,7 +171,6 @@ var PAGES = JSON.parse(document.getElementById("data").textContent);
 var P = {}, S = {}, order = [], syncs = [], pending = [], WARN = {}, SHADOWS = [];
 var RV = JSON.parse(document.getElementById("rv-data").textContent);  // ルール表示のデータ。原稿がなければ null（タブを出さない）
 var HUM = RV ? RV.human : [];  // 人の確認の項目（有効な人のルール）。確認は本文スライドだけ
-var DIRS = JSON.parse(document.getElementById("rv-dirs").textContent);  // デザイン方向の候補。なければ null（切り替えを出さない）
 var BODY = {};
 if (RV) RV.vertical.rows.forEach(function (r) { BODY[r.nn] = true; });
 function cleanChecks(c) {  // 人の確認の状態。今ある項目の、true だけを残す（順序は項目の順）
@@ -207,11 +205,6 @@ try {
       S[nn] = {pick: x.pick, status: x.status === "approved" && x.fr !== fr ? "saved" : x.status, comment: x.comment, checks: cleanChecks(x.checks), fr: x.status === "approved" && x.fr === fr ? fr : null};
     }
   });
-} catch (e) {}
-var DIR = DIRS ? (DIRS.current || "R1") : null, DIRSET = false;  // 全体の方向。利用者が押したとき（DIRSET）か、設計図の現在の方向と違うときだけ「Claude に渡す」に入れる
-if (DIRS) try {
-  var dv = localStorage.getItem(KEY + ":dir");
-  if (dv && DIRS.names[dv]) { DIR = dv; DIRSET = true; }
 } catch (e) {}
 var SHEET = null;  // 同じ CSS を案ごとに複製しないよう、1 枚のシートを全 shadow root で共有する
 try { SHEET = new CSSStyleSheet(); SHEET.replaceSync(BASE); } catch (e) { SHEET = null; }
@@ -258,9 +251,8 @@ function refresh() {
   syncs.forEach(function (f) { f(); });
   try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
 }
-function dirHas(nn) { return !!DIRS && P[nn].keys.indexOf(DIR) >= 0; }
-function shown(nn) { return S[nn].pick || (dirHas(nn) ? DIR : P[nn].keys[0]); }
-function vname(k) { return DIRS && DIRS.names[k] ? k + " " + DIRS.names[k] : k; }
+function shown(nn) { return S[nn].pick || P[nn].keys[0]; }
+function vname(k) { return k; }
 // --- ルール表示（RV があるときだけ） ---
 var RVR = {}, MARK = {ok: "OK", ng: "NG", warn: "注意", manual: "確認", build: "build時", none: "・", pending: "AI判定待ち", done: "確認済み", undone: "未確認"};
 if (RV) RV.rules.forEach(function (r) { RVR[r.id] = r; });
@@ -287,7 +279,22 @@ function setBig(nn) {
   flush();
 }
 // 選び直し・コメントは承認をやり直しにする（承認は「今見えている案とコメントなし」への承認）
-function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; }
+function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; }
+function approveOne(nn) { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; }
+function bulkApprove() {  // 案を選んであり、コメントが空で、人の確認の項目が全部済んでいるページを承認する。承認済みは変えない
+  var done = [], why = {comment: [], checks: [], nopick: []};
+  order.forEach(function (nn) {
+    var s = S[nn];
+    if (s.status === "approved") return;
+    if (!s.pick) why.nopick.push(nn);
+    else if (s.comment.trim()) why.comment.push(nn);
+    else if (unchecked(nn).length) why.checks.push(nn);
+    else { approveOne(nn); done.push(nn); }
+  });
+  refresh();
+  var parts = [["コメントあり", why.comment], ["確認項目が未チェック", why.checks], ["案が未選択", why.nopick]].filter(function (x) { return x[1].length; }).map(function (x) { return x[0] + " " + x[1].length + " 件（" + x[1].join("・") + "）"; });
+  $("rv-bulk-msg").textContent = "承認 " + done.length + " 件" + (parts.length ? "。承認しなかったページ: " + parts.join("、") : "。");
+}
 function unchecked(nn) { return BODY[nn] ? HUM.filter(function (x) { return !S[nn].checks[x.rule]; }) : []; }
 function humanLeft() { return order.reduce(function (a, n) { return a + unchecked(n).length; }, 0); }
 var nav = $("nav"), main = $("pages");
@@ -319,8 +326,8 @@ order.forEach(function (nn) {
   var undo = h("button", {class: "rvlnk", type: "button", "data-act": "undo", text: "承認を取り消す"});
   var note = h("div", {class: "rvnote"});
   ta.addEventListener("input", function () { S[nn].comment = ta.value; touch(nn); refresh(); });
-  ok.addEventListener("click", function () { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; $("st").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
-  undo.addEventListener("click", function () { S[nn].status = "saved"; WARN[nn] = false; $("st").textContent = ""; refresh(); });
+  ok.addEventListener("click", function () { approveOne(nn); $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
+  undo.addEventListener("click", function () { S[nn].status = "saved"; WARN[nn] = false; $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; refresh(); });
   var human = BODY[nn] && HUM.length ? humanBox(nn) : null;
   var hwarn = h("div", {class: "rv-hwarn", role: "alert"}), hdone = h("div", {class: "rv-hdone"});
   var sec = h("section", {class: "rvpg", id: "pg-" + nn}, [
@@ -334,8 +341,8 @@ order.forEach(function (nn) {
     var i = info(nn), s = S[nn], appr = s.status === "approved", cm = !!s.comment.trim();
     dot.className = "rvdot " + i.c; em.textContent = i.t;
     bd.className = "rvbd " + i.c; bd.textContent = i.t;
-    if (thumbs) [].forEach.call(thumbs.children, function (b) { b.classList.toggle("on", b.dataset.k === (s.pick || (dirHas(nn) ? DIR : null))); });
-    ok.disabled = appr || !(s.pick || dirHas(nn)) || cm;
+    if (thumbs) [].forEach.call(thumbs.children, function (b) { b.classList.toggle("on", b.dataset.k === s.pick); });
+    ok.disabled = appr || !s.pick || cm;
     ok.textContent = appr ? "承認済み ✓" : "承認";
     undo.hidden = !appr;
     var left = unchecked(nn);
@@ -343,7 +350,7 @@ order.forEach(function (nn) {
     hwarn.textContent = hwarn.hidden ? "" : "未確認の項目があります: " + left.map(function (x) { return x.rule + " " + x.name; }).join("、") + "。確認してから承認してください";
     hdone.hidden = !(appr && human);
     hdone.textContent = hdone.hidden ? "" : "確認済み " + (HUM.length - left.length) + "/" + HUM.length;
-    note.textContent = appr ? "このページは承認済みです。" : !s.pick && dirHas(nn) && !cm ? "「承認」を押すと、表示中の案（" + vname(shown(nn)) + "）で承認します。" : !s.pick ? "案を選んでください。" : cm ? "コメントがあるうちは承認できません。Claude に直してもらってから承認してください。" : "直したい点があればコメント欄へ。よければ「承認」。";
+    note.textContent = appr ? "このページは承認済みです。" : !s.pick ? "案を選んでください。" : cm ? "コメントがあるうちは承認できません。Claude に直してもらってから承認してください。" : "直したい点があればコメント欄へ。よければ「承認」。";
   });
 });
 
@@ -401,7 +408,6 @@ function goTab(name) {
   for (var t in tabs) { tabs[t].hidden = t !== name; $("rv-tab-" + t).setAttribute("aria-selected", String(t === name)); }
   $("rv-intro").hidden = name !== "pick";
   $("rv-color-panel").hidden = name !== "pick";
-  if ($("rv-dir-panel")) $("rv-dir-panel").hidden = name !== "pick";
   if (name === "rules") renderRules();
   if (name === "vert") renderVert();
 }
@@ -524,29 +530,6 @@ function chooseColor(c) {
   } catch (e) {}
   paintColorButtons();
 })();
-// --- 全体の方向: 確定していないページの大きな表示だけが変わる（S[nn].pick は書かない） ---
-var DBTNS = [];
-function paintDirButtons() { DBTNS.forEach(function (b) { b[0].setAttribute("aria-pressed", String(b[1] === DIR)); }); }
-function chooseDir(k) {
-  DIR = k; DIRSET = true;
-  paintDirButtons();
-  try { localStorage.setItem(KEY + ":dir", k); } catch (e) {}
-  order.forEach(setBig);
-  refresh();
-}
-if (DIRS) {
-  var dbox = h("div", {class: "rv-color", id: "rv-dir-panel"}), drow = h("div", {class: "rv-color-row", role: "group", "aria-label": "デザイン方向"});
-  dbox.appendChild(h("span", {class: "rv-color-label", text: "方向", title: "選ぶと、案を確定していないページの表示が、その方向の案に変わります。「Claude に渡す」で、設計図の方向に反映します"}));
-  Object.keys(DIRS.names).forEach(function (k) {
-    var b = h("button", {class: "rv-cs", type: "button", "data-dir": k, text: vname(k)});
-    b.addEventListener("click", function () { chooseDir(k); });
-    DBTNS.push([b, k]);
-    drow.appendChild(b);
-  });
-  dbox.appendChild(drow);
-  $("rv-color-panel").insertAdjacentElement("afterend", dbox);
-  paintDirButtons();
-}
 if (!sameColor(COLOR, CD.current)) applyColor(COLOR);  // 前回選んだ色（グラフは flush のあとに描き直す）
 refresh();
 function pick(nn, k) {
@@ -579,9 +562,9 @@ function payload() {
   });
   var out = {"pptx-maker-review": 1, base: STAMP, check: fnv(JSON.stringify(pages)), pages: pages};
   if (!sameColor(COLOR, CD.current)) out.color = {name: COLOR.name, accent: COLOR.accent, emphasis: COLOR.emphasis};  // 設計図の色と違うときだけ
-  if (DIRS && (DIRSET || DIRS.current !== DIR)) out.direction = DIR;  // 押したとき、または表示中の方向が設計図の現在の方向と違うとき
   return JSON.stringify(out);
 }
+$("rv-bulk").addEventListener("click", bulkApprove);
 $("share").addEventListener("click", async function () {
   var t = payload(), box = $("out"), st = $("st");
   box.value = t;
@@ -711,16 +694,6 @@ def _rules_blob(work: Path, cands: dict[str, dict[str, str]], measure: bool, not
     return _script_safe(json.dumps(data, ensure_ascii=False))
 
 
-def _dirs_blob(work: Path) -> str:
-    """デザイン方向の候補のデータ（JSON）。設計図に候補の行がなければ null（ページは切り替えを出さない）。"""
-    names = directions.candidate_list(work)
-    if names is None:
-        return "null"
-    cur = directions.current(work)
-    key = next((k for k, v in names.items() if v == cur), None)
-    return _script_safe(json.dumps({"names": names, "current": key}, ensure_ascii=False))
-
-
 def _embedded_state(work: Path, cands: dict[str, dict[str, str]]) -> dict[str, dict]:
     """ページに埋め込む選択結果。承認した断片の指紋が今の断片と合わない承認済み（旧形式を含む）は、saved にして出す
     （利用者が見ていない断片が、承認のまま「Claude に渡す」で通るのを防ぐ。ディスクの choices/ は変えない）。"""
@@ -758,7 +731,6 @@ def build(work: Path, measure: bool = True, notes: list[str] | None = None) -> P
         "DATA": data,
         "RULES": _rules_blob(work, cands, measure, notes),
         "COLORS": _script_safe(json.dumps(color_sets.review_data(work), ensure_ascii=False)),
-        "DIRS": _dirs_blob(work),
         "CHART": _asset(work, "chart-preview.js").replace("</script", "<\\/script"),
         # shadow root の CSS。テーマ（.slide[data-layout=…] の規則）・base.css・:host の書体
         "BASE": json.dumps(f"{theme}\n{_asset(work, 'base.css')}\n{_HOST_CSS}", ensure_ascii=False).replace(

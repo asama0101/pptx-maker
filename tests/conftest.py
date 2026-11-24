@@ -13,6 +13,12 @@ def _no_marketplace(tmp_path_factory, monkeypatch):
     monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(tmp_path_factory.mktemp("claude-config")))
 
 
+@pytest.fixture(autouse=True)
+def _no_browser_open(monkeypatch):
+    """review-page が実際のブラウザを開かないようにする（開く動作を確かめるテストは、これを上書きする）。"""
+    monkeypatch.setattr("webbrowser.open", lambda url, *a, **k: True)
+
+
 @pytest.fixture
 def pkg() -> Path:
     """プラグイン本体（plugins/pptx-maker）のパス。読み取り専用で使う。"""

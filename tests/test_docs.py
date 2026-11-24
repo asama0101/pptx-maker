@@ -303,16 +303,25 @@ def test_ページを閉じる前に貼り付ける注意が書いてある(f):
     assert "開き直" in t
 
 
-def test_create_は案を書く前にデザイン方向を提示して選ばせる():
+def test_create_は全体の方向を選ばせず_案をレイアウトの違いで名付ける():
     t = skill_text("create")
-    assert "デザイン方向" in t
+    assert "デザイン方向の候補" not in t
+    assert "全体の方向は決めない" in t
+    assert "data-variant" in t
     assert "design-directions.md" in t
-    assert "AskUserQuestion" in t[t.index("デザイン方向") :]
     # frontend-design には依存しない（スキルの許可にも、手順にも書かない）
     assert "Skill(frontend-design" not in t
 
 
-def test_design_directions_に使う観点と使わない観点と方向のカタログが書いてある():
+def test_create_と_review_flow_は自動起動と一括承認を書く():
+    assert "自動で" in skill_text("create")
+    assert "--no-open" in skill_text("create")
+    flow = read(PKG / "references" / "review-flow.md")
+    assert "選択済みを一括承認" in flow
+    assert "自動で開く" in flow
+
+
+def test_design_directions_に使う観点と使わない観点と案のレイアウト例のカタログが書いてある():
     t = read(PKG / "references" / "design-directions.md")
     assert "使う観点" in t
     assert "使わない" in t
@@ -322,6 +331,9 @@ def test_design_directions_に使う観点と使わない観点と方向のカ�
     # 題材ごとのカタログ（稟議・承認、提案、計画、障害報告）
     for word in ("稟議", "提案", "計画", "障害報告"):
         assert word in t, word
+    # 隣り合うページで構図を重ねない指針（4 章）は残す
+    assert "## 4. 見本をなぞらない" in t
+    assert "隣り合う 3 ページ" in t
 
 
 def test_html_rules_は_design_directions_を参照し_frontend_design_を呼ばない():

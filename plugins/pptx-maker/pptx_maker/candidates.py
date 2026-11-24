@@ -1,8 +1,7 @@
 """スライド案の収集。`<作業フォルダ>/slides/` の断片を、スライド番号ごとの案にまとめる。
 
-名前の規則は `NN-R1.html`〜`NN-R3.html`（どのページも 2〜3 案。構造の違う案を並べる）。`NN-A.html` は使えない。
-設計図に `デザイン方向の候補:` の行があるときは、その数（3〜4）の案 `NN-R1.html`〜`NN-Rn.html` を、
-どのページにもそろえる（R4 も使える）。"""
+名前の規則は `NN-R1.html`〜`NN-R4.html`（どのページも 2〜4 案。レイアウトの違う案を並べる）。`NN-A.html` は使えない。
+設計図の `デザイン方向の候補:` の行は読まない（古い作業フォルダに残っていても無視する）。"""
 
 import html as _html
 import json
@@ -10,7 +9,7 @@ import re
 from html.parser import HTMLParser
 from pathlib import Path
 
-from . import directions, paths, svgids
+from . import paths, svgids
 
 _NAME = re.compile(r"^(\d{2})-(R[1-4])\.html$")
 
@@ -23,17 +22,15 @@ def collect(work: Path) -> dict[str, dict[str, str]]:
     # 数字で始まる（先頭の s・S は可）.html は断片のつもりとみなす（_NAME に合わなければ書き間違いか旧形式）。
     # draft-1.html・notes.html などは無視する
     files = sorted(f for f in d.iterdir() if f.suffix.lower() == ".html" and re.match(r"[sS]?\d", f.stem))
-    cands = directions.candidate_list(work)
-    last = "Rn" if cands else "R3"  # 名前の案内。候補の行があれば方向の数まで
     errors: list[str] = []
     type_pages = [f.name for f in files if re.fullmatch(r"\d{2}-A\.html", f.name)]
     for n in type_pages:
-        errors.append(f"{n}: 型のページも 2〜3 案（{n[:2]}-R1.html〜）にしてください")
+        errors.append(f"{n}: 型のページも 2〜4 案（{n[:2]}-R1.html〜）にしてください")
     bad = [f.name for f in files if not _NAME.match(f.name) and f.name not in type_pages]
     if bad:
         errors.append(
             f"断片の名前として読めないファイルがあります: {', '.join(bad)}"
-            f"（旧形式の名前は使えません。どのページも NN-R1.html〜NN-{last}.html。"
+            "（旧形式の名前は使えません。どのページも NN-R1.html〜NN-R4.html。"
             "NN は 2 桁で、-d2・-d3 は付けません）"
         )
     found: dict[str, list[Path]] = {}
@@ -41,17 +38,9 @@ def collect(work: Path) -> dict[str, dict[str, str]]:
         m = _NAME.match(f.name)
         if m:
             found.setdefault(m.group(1), []).append(f)
-    names = ", ".join(cands) if cands else ""
     for nn, fs in sorted(found.items()):
-        keys = {_NAME.match(f.name).group(2) for f in fs}
-        if cands is None:
-            if "R4" in keys:
-                errors.append(f"{nn}-R4.html: 設計図に デザイン方向の候補 がないと R4 は使えません")
-            if len(keys - {"R4"}) < 2:
-                errors.append(f"{nn}: 2〜3 案（{nn}-R1.html〜{nn}-R3.html のうち 2〜3 個）が要ります")
-            continue
-        errors.extend(f"{nn}-{k}.html: 設計図の候補（{names}）にない案です" for k in sorted(keys - set(cands)))
-        errors.extend(f"{nn}: 案 {k} が足りません（設計図の候補: {names}）" for k in cands if k not in keys)
+        if not 2 <= len(fs) <= 4:
+            errors.append(f"{nn}: 2〜4 案（{nn}-R1.html〜{nn}-R4.html のうち 2〜4 個）が要ります")
     nums = {int(f[:2]) for f in [*found, *type_pages]}
     missing = [f"{i:02d}" for i in range(1, max(nums, default=0) + 1) if i not in nums]
     if missing:

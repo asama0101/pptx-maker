@@ -27,13 +27,13 @@ def test_collect_accepts_R1_R2(tmp_path):
 
 def test_collect_rejects_A(tmp_path):
     _put(tmp_path, "01-A.html")
-    with pytest.raises(ValueError, match="01-A.html: 型のページも 2〜3 案（01-R1.html〜）にしてください"):
+    with pytest.raises(ValueError, match="01-A.html: 型のページも 2〜4 案（01-R1.html〜）にしてください"):
         candidates.collect(tmp_path)
 
 
 def test_collect_requires_two_variants(tmp_path):
     _put(tmp_path, "01-R1.html", "01-R2.html", "02-R1.html")
-    with pytest.raises(ValueError, match="02: 2〜3 案"):
+    with pytest.raises(ValueError, match="02: 2〜4 案"):
         candidates.collect(tmp_path)
 
 
@@ -55,7 +55,7 @@ def test_rejects_design_suffix(tmp_path):
 
 def test_rejects_single_free(tmp_path):
     _put(tmp_path, "04-R1.html")
-    with pytest.raises(ValueError, match="04: 2〜3 案（04-R1.html〜04-R3.html のうち 2〜3 個）が要ります"):
+    with pytest.raises(ValueError, match="04: 2〜4 案（04-R1.html〜04-R4.html のうち 2〜4 個）が要ります"):
         candidates.collect(tmp_path)
 
 
@@ -77,12 +77,6 @@ def test_digit_names_not_matching_are_reported(tmp_path, bad):
 def test_html_not_starting_with_number_is_ignored(tmp_path, other):
     _put(tmp_path, "01-R1.html", "01-R2.html", other)
     assert list(candidates.collect(tmp_path)) == ["01"]
-
-
-def test_rejects_four_free(tmp_path):
-    _put(tmp_path, "04-R1.html", "04-R2.html", "04-R3.html", "04-R4.html")
-    with pytest.raises(ValueError, match="R4"):
-        candidates.collect(tmp_path)
 
 
 def test_old_names(tmp_path):
@@ -126,7 +120,7 @@ def test_rejects_numbers_not_starting_at_01(tmp_path):
 def test_gap_is_reported_with_other_errors(tmp_path):
     _put_all(tmp_path, "01")
     _put(tmp_path, "03-R1.html")
-    with pytest.raises(ValueError, match=r"(?s)2〜3 案.*足りない番号: 02"):
+    with pytest.raises(ValueError, match=r"(?s)2〜4 案.*足りない番号: 02"):
         candidates.collect(tmp_path)
 
 
@@ -218,39 +212,30 @@ def _dirs(work: Path, line: str) -> Path:
     return work
 
 
-def test_collect_with_candidates_requires_every_direction(tmp_path):
+def test_collect_は候補の行があっても無視する(tmp_path):
     _dirs(tmp_path, "R1=a, R2=b, R3=c")
     _put(tmp_path, "01-R1.html", "01-R2.html", "01-R3.html", "02-R1.html", "02-R2.html")
-    with pytest.raises(ValueError, match=r"02: 案 R3 が足りません（設計図の候補: R1, R2, R3）") as e:
-        candidates.collect(tmp_path)
-    assert "01:" not in str(e.value)
+    assert list(candidates.collect(tmp_path)) == ["01", "02"]
 
 
-def test_collect_with_candidates_accepts_four(tmp_path):
-    _dirs(tmp_path, "R1=a, R2=b, R3=c, R4=d")
+def test_collect_は壊れた候補の行でもエラーにしない(tmp_path):
+    _dirs(tmp_path, "壊れている")
+    _put(tmp_path, "01-R1.html", "01-R2.html")
+    assert list(candidates.collect(tmp_path)) == ["01"]
+
+
+def test_collect_は_R4_まで使える(tmp_path):
     _put(tmp_path, *[f"01-R{k}.html" for k in (1, 2, 3, 4)])
     assert list(candidates.collect(tmp_path)["01"]) == ["R1", "R2", "R3", "R4"]
 
 
-def test_collect_with_candidates_rejects_variant_outside_list(tmp_path):
-    _dirs(tmp_path, "R1=a, R2=b, R3=c")
-    _put(tmp_path, "01-R1.html", "01-R2.html", "01-R3.html", "01-R4.html")
-    with pytest.raises(ValueError, match=r"01-R4.html: 設計図の候補（R1, R2, R3）にない案です"):
+def test_collect_は案が_1_個のページを断る(tmp_path):
+    _put(tmp_path, "01-R1.html")
+    with pytest.raises(ValueError, match="01: 2〜4 案"):
         candidates.collect(tmp_path)
 
 
-def test_collect_without_candidates_rejects_R4(tmp_path):
-    _put(tmp_path, "01-R1.html", "01-R2.html", "01-R4.html")
-    with pytest.raises(ValueError, match="01-R4.html: 設計図に デザイン方向の候補 がないと R4 は使えません"):
+def test_collect_は_R5_を断る(tmp_path):
+    _put(tmp_path, "01-R1.html", "01-R2.html", "01-R5.html")
+    with pytest.raises(ValueError, match=r"NN-R1\.html〜NN-R4\.html"):
         candidates.collect(tmp_path)
-
-
-def test_unreadable_name_hint_follows_candidate_mode(tmp_path):
-    _put(tmp_path, "01-R1.html", "01-R2.html", "01-d2.html")
-    with pytest.raises(ValueError, match=r"NN-R1\.html〜NN-R3\.html") as e:
-        candidates.collect(tmp_path)
-    assert "NN-Rn" not in str(e.value)
-    _dirs(tmp_path, "R1=a, R2=b, R3=c")
-    with pytest.raises(ValueError, match=r"NN-R1\.html〜NN-Rn\.html") as e:
-        candidates.collect(tmp_path)
-    assert "NN-R3.html" not in str(e.value)
