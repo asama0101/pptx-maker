@@ -138,8 +138,9 @@ label.rv-hc input { margin-top:4px; }
 <div id="rv">
   <header class="rvtop">
     <h1>スライド案の選択</h1>
-    <div class="rvprog"><div class="rvbar"><i id="bar"></i></div><span class="rvptxt" id="ptxt"></span><button class="rvbtn pri" type="button" id="share">Claude に渡す</button></div>
+    <div class="rvprog"><div class="rvbar"><i id="bar"></i></div><span class="rvptxt" id="ptxt"></span><button class="rvbtn pri" type="button" id="share">Claude に渡す</button><button class="rvbtn" type="button" id="rv-bulk" title="案を選んであり、コメントがなく、人の確認の項目が済んでいるページを、まとめて承認します">選択済みを一括承認</button></div>
     <p class="rvmsg" id="st"></p>
+    <p class="rvmsg" id="rv-bulk-msg" role="status"></p>
     <textarea class="rvout" id="out" readonly hidden></textarea>
     <nav class="rv-tabs" id="rv-tabs" role="tablist" hidden>
       <button class="rv-tab" type="button" role="tab" id="rv-tab-pick" data-tab="pick">案の選択</button>
@@ -278,7 +279,22 @@ function setBig(nn) {
   flush();
 }
 // 選び直し・コメントは承認をやり直しにする（承認は「今見えている案とコメントなし」への承認）
-function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; }
+function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; }
+function approveOne(nn) { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; }
+function bulkApprove() {  // 案を選んであり、コメントが空で、人の確認の項目が全部済んでいるページを承認する。承認済みは変えない
+  var done = [], why = {comment: [], checks: [], nopick: []};
+  order.forEach(function (nn) {
+    var s = S[nn];
+    if (s.status === "approved") return;
+    if (!s.pick) why.nopick.push(nn);
+    else if (s.comment.trim()) why.comment.push(nn);
+    else if (unchecked(nn).length) why.checks.push(nn);
+    else { approveOne(nn); done.push(nn); }
+  });
+  refresh();
+  var parts = [["コメントあり", why.comment], ["確認項目が未チェック", why.checks], ["案が未選択", why.nopick]].filter(function (x) { return x[1].length; }).map(function (x) { return x[0] + " " + x[1].length + " 件（" + x[1].join("・") + "）"; });
+  $("rv-bulk-msg").textContent = "承認 " + done.length + " 件" + (parts.length ? "。承認しなかったページ: " + parts.join("、") : "。");
+}
 function unchecked(nn) { return BODY[nn] ? HUM.filter(function (x) { return !S[nn].checks[x.rule]; }) : []; }
 function humanLeft() { return order.reduce(function (a, n) { return a + unchecked(n).length; }, 0); }
 var nav = $("nav"), main = $("pages");
@@ -310,8 +326,8 @@ order.forEach(function (nn) {
   var undo = h("button", {class: "rvlnk", type: "button", "data-act": "undo", text: "承認を取り消す"});
   var note = h("div", {class: "rvnote"});
   ta.addEventListener("input", function () { S[nn].comment = ta.value; touch(nn); refresh(); });
-  ok.addEventListener("click", function () { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; $("st").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
-  undo.addEventListener("click", function () { S[nn].status = "saved"; WARN[nn] = false; $("st").textContent = ""; refresh(); });
+  ok.addEventListener("click", function () { approveOne(nn); $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; refresh(); });  // 未確認の項目があっても承認は止めない（警告だけ）
+  undo.addEventListener("click", function () { S[nn].status = "saved"; WARN[nn] = false; $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; refresh(); });
   var human = BODY[nn] && HUM.length ? humanBox(nn) : null;
   var hwarn = h("div", {class: "rv-hwarn", role: "alert"}), hdone = h("div", {class: "rv-hdone"});
   var sec = h("section", {class: "rvpg", id: "pg-" + nn}, [
@@ -548,6 +564,7 @@ function payload() {
   if (!sameColor(COLOR, CD.current)) out.color = {name: COLOR.name, accent: COLOR.accent, emphasis: COLOR.emphasis};  // 設計図の色と違うときだけ
   return JSON.stringify(out);
 }
+$("rv-bulk").addEventListener("click", bulkApprove);
 $("share").addEventListener("click", async function () {
   var t = payload(), box = $("out"), st = $("st");
   box.value = t;
