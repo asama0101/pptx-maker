@@ -273,7 +273,7 @@ def make_fragments(plugin: Path, dst: Path) -> None:
     c = plugin / "assets" / "components" / "layouts"
 
     def variant(text: str, name: str) -> str:
-        return re.sub(r'(<section class="slide")', rf' data-variant="{name}"', text, count=1)
+        return re.sub(r'(<section class="slide")', rf'\g<1> data-variant="{name}"', text, count=1)
 
     def write(nn: str, k: int, text: str, name: str) -> None:
         (dst / f"{nn}-R{k}.html").write_text(variant(text, name), encoding="utf-8", newline="\n")
