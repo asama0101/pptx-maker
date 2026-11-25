@@ -21,10 +21,10 @@
 
 Claude Code で打つコマンドは、次の 4 つ。文章で頼んでも起動しないので、コマンドで呼ぶ。内部で使うコマンドは [docs/development.md](docs/development.md#コマンド) にある。
 
-- `/pptx-maker:create`: 資料や図を新しく作る。図だけの依頼は、表紙と図のスライドの 2 枚になる。
-- `/pptx-maker:doctor`: 環境を診断し、最新版かを確かめる。何も変えない。
-- `/pptx-maker:template`: 自分のテンプレートを登録する・一覧を見る・消す。
-- `/pptx-maker:rules`: 鉄板ルールを対話で追加・編集・無効化する・一覧を見る。
+- `/pptx-maker:create`: 資料や図を新しく作成する。図だけの依頼は、表紙と図のスライドの 2 枚にする。
+- `/pptx-maker:doctor`: 環境を診断し、最新版かを確かめる。何も変更しない。
+- `/pptx-maker:template`: 自分のテンプレートの登録・一覧表示・削除をする。
+- `/pptx-maker:rules`: 鉄板ルールを対話で追加・編集・無効化・有効化・削除・既定に戻す・一覧表示をする。
 
 ## 導入方法
 
