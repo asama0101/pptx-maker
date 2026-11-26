@@ -396,6 +396,7 @@ def cmd_choices_import(args) -> int:
                 ):
                     rulebook.clear_reviews(work, page=nn)
 
+        edited: list[dict] = []
         commented = choices.import_text(
             work,
             text,
@@ -403,13 +404,16 @@ def cmd_choices_import(args) -> int:
             before_write=before_write if color else None,
             cands=cands,
             on_parsed=clear_stale,
+            edited=edited,
+            # 文言を直すと断片と script.md が食い違う。全体（deck）の AI 判定は断片の指紋が付かないので、ここで消す
+            on_text_edit=lambda: rulebook.clear_reviews(work, page="deck"),
         )
     except (OSError, ValueError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 2
     print(
         json.dumps(
-            {"comments": commented, **({"color": color} if color else {})},
+            {"comments": commented, **({"color": color} if color else {}), **({"edited": edited} if edited else {})},
             ensure_ascii=False,
         )
     )
