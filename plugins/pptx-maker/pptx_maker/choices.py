@@ -16,7 +16,7 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
 
-from . import paths
+from . import candidates, fragedit, paths
 
 
 def load(base: Path) -> dict[str, dict]:
@@ -139,13 +139,36 @@ def _parse(
             isinstance(d["checks"], dict) and all(isinstance(v, bool) for v in d["checks"].values())
         ):
             errors.append(f"{nn}: checks は、ルール ID から真偽（true・false）へのオブジェクトにしてください")
+        elif "edits" in d and (msg := _edits_error(d["edits"], valid.get(nn, []) if valid else None, cands)):
+            errors.append(f"{nn}: {msg}")
         else:
             out[nn] = {"pick": pick, "comment": comment.strip(), "status": status}
             if d.get("checks"):
                 out[nn]["checks"] = d["checks"]
+            if d.get("edits"):
+                out[nn]["edits"] = d["edits"]
     if errors:
         raise ValueError("\n".join(errors))
     return out
+
+
+def _edits_error(edits: object, variants: list[str] | None, cands: dict | None) -> str | None:
+    """`edits`（案の名前 → {"ef": 指紋, "items": {番号の文字列: {...}}}）の形の誤り。正しければ None。"""
+    if cands is None:
+        return "edits は、断片を読めるときだけ取り込めます"
+    if not isinstance(edits, dict):
+        return "edits は、案の名前から {ef, items} へのオブジェクトにしてください"
+    for key, e in edits.items():
+        if variants is not None and key not in variants:
+            return f"edits の案 {key} はありません（候補: {', '.join(variants)}）"
+        if not (
+            isinstance(e, dict)
+            and isinstance(e.get("ef"), str)
+            and isinstance(e.get("items"), dict)
+            and all(isinstance(n, str) and n.isascii() and n.isdecimal() for n in e["items"])
+        ):
+            return f"edits の {key} は、ef（文字列）と items（番号の文字列から項目へのオブジェクト）が要ります"
+    return None
 
 
 def _stale_fr(fr: object, frags: dict[str, str], pick: str | None) -> str | None:
@@ -194,8 +217,9 @@ def _write(base: Path, nn: str, d: dict) -> None:
     paths.write_json(f, {"at": datetime.now(UTC).isoformat(timespec="seconds"), **d})
 
 
-def _commit(base: Path, parsed: dict[str, dict]) -> None:
+def _commit(base: Path, parsed: dict[str, dict], frags: dict[Path, bytes] | None = None) -> None:
     """全ページを `<NN>.json.new` に書き終えてから、`<NN>.json` に置き換える。
+    `frags`（断片のパス → 新しい中身）があれば、同じ流れで `<名前>.new` に書き、選択のあとに置き換える。
     書き込みの途中（ディスクが満杯など）で失敗したら、どのページも反映せず、一時ファイルも残さない。
     置き換えの途中（別のプロセスがファイルを掴んでいるなど）で失敗したときは、置き換え済みのページだけが反映される。"""
     d = Path(base) / "choices"
@@ -203,16 +227,54 @@ def _commit(base: Path, parsed: dict[str, dict]) -> None:
     now = datetime.now(UTC).isoformat(timespec="seconds")
     staged: list[Path] = []
     try:
+        for f, data in (frags or {}).items():
+            new = f.with_name(f.name + ".new")
+            staged.append(new)
+            new.write_bytes(data)
         for nn, page in parsed.items():
             new = d / f"{nn}.json.new"
             staged.append(new)
             paths.write_json(new, {"at": now, **page})
-        for new in staged:
+        for new in [*staged[len(frags or {}) :], *staged[: len(frags or {})]]:  # 選択を先に、断片をあとに置き換える
             new.replace(new.with_suffix(""))
     except BaseException:
         for new in staged:
             new.unlink(missing_ok=True)
         raise
+
+
+def _apply_edits(
+    base: Path, parsed: dict[str, dict], cands: dict[str, dict[str, str]] | None
+) -> tuple[dict[Path, bytes], list[dict]]:
+    """`parsed` の `edits` を取り出し、断片（生のファイル）に当てた結果を返す。書き換えたページは saved にする。
+    誤りは全ページ分をまとめて ValueError（何も書かない）。"""
+    frags: dict[Path, bytes] = {}
+    done: list[dict] = []
+    errors: list[str] = []
+    for nn, page in sorted(parsed.items()):
+        edits = page.pop("edits", None) or {}
+        for key, e in sorted(edits.items()):
+            if not e["items"]:
+                continue
+            f = Path(base) / "slides" / f"{nn}-{key}.html"
+            where = f"{nn}-{key}"
+            if e["ef"] != fragment_hash(cands[nn][key]):
+                errors.append(f"{where}: ef が今の断片と違います。review-page をやり直してから、直し直してください")
+                continue
+            items = {int(n): v for n, v in e["items"].items()}
+            raw = f.read_bytes().decode("utf-8")
+            problems = fragedit.validate(raw, items)
+            new = "" if problems else fragedit.apply(raw, items)
+            problems += [] if problems else candidates.unsafe_parts(new)
+            if problems:
+                errors += [f"{where}: {m}" for m in problems]
+                continue
+            frags[f] = new.encode("utf-8")
+            done.append({"slide": nn, "variant": key, "items": len(items)})
+            page["status"] = "saved"
+    if errors:
+        raise ValueError("\n".join(errors))
+    return frags, done
 
 
 def import_text(
@@ -222,14 +284,18 @@ def import_text(
     before_write: Callable[[], None] | None = None,
     cands: dict[str, dict[str, str]] | None = None,
     on_parsed: Callable[[dict[str, dict]], None] | None = None,
+    edited: list[dict] | None = None,
 ) -> list[dict]:
     """選択ページがコピーした JSON を `<base>/choices/<NN>.json` に書く（含まれないページは触らない）。
     検査が全部通ったあと、書く直前に `before_write` を呼ぶ（配色など、選択と一緒に反映したいものを先に書く。
     ここで失敗すれば、選択は書かれず、同じ JSON をそのまま貼り直せる）。
     `on_parsed` は、検査と `frag` の計算のあと、書く前に、書く内容（スライド番号 → ページ）を渡して呼ぶ。
     `cands`（スライド番号 → 案の名前 → 断片の HTML）があれば、承認済みのページに選んだ断片の指紋 `frag` を書く。
+    `edits`（編集モードの文言・位置の直し）は、断片（`slides/NN-<案>.html`）へ書き戻し、そのページを保存済み
+    （saved・`frag` なし）で書く。書き換えた案を `edited` に `{"slide", "variant", "items"}` で追記する。
     コメントのあるページを `[{"slide": "03", "comment": "…"}]` で返す。"""
     parsed = _parse(text, base, valid, cands)
+    frags, done = _apply_edits(base, parsed, cands)
     for nn, page in parsed.items():
         if cands and page["status"] == "approved" and page["pick"] in cands.get(nn, {}):
             page["frag"] = fragment_hash(cands[nn][page["pick"]])
@@ -237,7 +303,9 @@ def import_text(
         on_parsed(parsed)  # 書く前の処理（`frag` を含む、書く内容を渡す）。失敗すれば何も書かない
     if before_write:
         before_write()
-    _commit(base, parsed)
+    _commit(base, parsed, frags)
+    if edited is not None:
+        edited.extend(done)
     return [{"slide": nn, "comment": d["comment"]} for nn, d in sorted(parsed.items()) if d["comment"]]
 
 

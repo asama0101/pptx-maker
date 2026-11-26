@@ -396,6 +396,7 @@ def cmd_choices_import(args) -> int:
                 ):
                     rulebook.clear_reviews(work, page=nn)
 
+        edited: list[dict] = []
         commented = choices.import_text(
             work,
             text,
@@ -403,13 +404,14 @@ def cmd_choices_import(args) -> int:
             before_write=before_write if color else None,
             cands=cands,
             on_parsed=clear_stale,
+            edited=edited,
         )
     except (OSError, ValueError) as e:
         print(f"エラー: {e}", file=sys.stderr)
         return 2
     print(
         json.dumps(
-            {"comments": commented, **({"color": color} if color else {})},
+            {"comments": commented, **({"color": color} if color else {}), **({"edited": edited} if edited else {})},
             ensure_ascii=False,
         )
     )
