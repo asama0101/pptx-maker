@@ -168,7 +168,7 @@ var FR = __FR__;  // 各スライド・各案の断片の指紋（choices.fragme
 var STAMP = "__STAMP__";
 (function () {
 var PAGES = JSON.parse(document.getElementById("data").textContent);
-var P = {}, S = {}, order = [], syncs = [], pending = [], WARN = {}, SHADOWS = [];
+var FRAMES = [], P = {}, S = {}, order = [], syncs = [], pending = [], WARN = {}, SHADOWS = [];
 var RV = JSON.parse(document.getElementById("rv-data").textContent);  // ルール表示のデータ。原稿がなければ null（タブを出さない）
 var HUM = RV ? RV.human : [];  // 人の確認の項目（有効な人のルール）。確認は本文スライドだけ
 var BODY = {};
@@ -176,6 +176,41 @@ if (RV) RV.vertical.rows.forEach(function (r) { BODY[r.nn] = true; });
 function cleanChecks(c) {  // 人の確認の状態。今ある項目の、true だけを残す（順序は項目の順）
   var o = {};
   HUM.forEach(function (x) { if (c && c[x.rule] === true) o[x.rule] = true; });
+  return o;
+}
+// --- 編集モード（文言・位置の直し）: 断片の文字列から数えた番号（fragedit.parts と同じ規則）で要素を指す ---
+var PPKIND = /^pp-(text|shape|line|image|table|chart|picture)$/, GEO = ["left", "top", "width", "height"];
+function ppKind(el) {
+  var t = (el.getAttribute("class") || "").split(/\\s+/);
+  for (var i = 0; i < t.length; i++) { var m = PPKIND.exec(t[i]); if (m) return m[1]; }
+  return null;
+}
+function ppEls(root) { return [].filter.call(root.querySelectorAll("*"), function (e) { return ppKind(e); }); }
+function ownTexts(el) {  // 入れ子の pp-* の中を除く、空白だけでないテキストノード
+  var o = [];
+  (function walk(n) {
+    for (var c = n.firstChild; c; c = c.nextSibling) {
+      if (c.nodeType === 3) { if (c.nodeValue.trim()) o.push(c); } else if (c.nodeType === 1 && !ppKind(c)) walk(c);
+    }
+  })(el);
+  return o;
+}
+function partsOf(html) {
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  return ppEls(doc).map(function (el, i) {
+    var nested = false, st = {}, m, re = /([^;:]+):([^;]*)/g, sa = el.getAttribute("style") || "";
+    for (var a = el.parentElement; a; a = a.parentElement) if (ppKind(a)) nested = true;
+    while ((m = re.exec(sa))) st[m[1].trim().toLowerCase()] = m[2].trim();
+    return {i: i, kind: ppKind(el), nested: nested, fixed: el.hasAttribute("data-chrome") || el.hasAttribute("data-ph"), style: st, texts: ownTexts(el).map(function (n) { return n.nodeValue; })};
+  });
+}
+function cleanEdits(nn, e) {  // 今ある案で、断片の指紋が今と同じ編集だけを残す
+  var o = {};
+  if (!e || typeof e !== "object") return o;
+  Object.keys(e).forEach(function (k) {
+    var x = e[k];
+    if (P[nn].keys.indexOf(k) >= 0 && x && typeof x === "object" && x.ef === (FR[nn] || {})[k] && x.items && typeof x.items === "object" && Object.keys(x.items).length) o[k] = {ef: x.ef, items: x.items};
+  });
   return o;
 }
 PAGES.forEach(function (p) {
@@ -189,6 +224,7 @@ PAGES.forEach(function (p) {
     status: had && (i.status === "approved" || i.status === "saved") ? i.status : null,
     comment: typeof i.comment === "string" ? i.comment : "",
     checks: cleanChecks(i.checks),
+    edits: {},
     fr: null
   };
   if (S[p[0]].status === "approved") S[p[0]].fr = (FR[p[0]] || {})[S[p[0]].pick] || null;  // 埋め込み状態の承認は、指紋が今と合うものだけ（_embedded_state）
@@ -202,7 +238,7 @@ try {
     if (x && (x.pick === null || P[nn].keys.indexOf(x.pick) >= 0) && typeof x.comment === "string" && (x.status === "approved" || x.status === "saved" || x.status === null)) {
       var fr = x.pick === null ? null : (FR[nn] || {})[x.pick] || null;
       // 承認は、見た断片の指紋 fr が今の断片と同じときだけ復元する（断片が直されていたら saved に落とす）
-      S[nn] = {pick: x.pick, status: x.status === "approved" && x.fr !== fr ? "saved" : x.status, comment: x.comment, checks: cleanChecks(x.checks), fr: x.status === "approved" && x.fr === fr ? fr : null};
+      S[nn] = {pick: x.pick, status: x.status === "approved" && x.fr !== fr ? "saved" : x.status, comment: x.comment, checks: cleanChecks(x.checks), edits: cleanEdits(nn, x.edits), fr: x.status === "approved" && x.fr === fr ? fr : null};
     }
   });
 } catch (e) {}
@@ -233,13 +269,51 @@ function flush() {
   pending.splice(0).forEach(function (x) {
     var f = x[0], sh = f.firstChild.attachShadow({mode: "open"});
     SHADOWS.push(sh);
-    sh.innerHTML = (SHEET ? "" : "<style>" + BASE + "</style>") + P[x[1]].c[x[2]];
+    FRAMES.push([sh, x[1], x[2]]);
     if (SHEET) sh.adoptedStyleSheets = [SHEET];
-    sh.querySelectorAll(".pp-chart").forEach(drawChart);
-    if (window.__arrows) window.__arrows(sh);
+    paint(sh, x[1], x[2]);
     ro.observe(f);
   });
 }
+function paint(sh, nn, k) {  // 断片を入れ、編集を反映してから、グラフ・矢印を描く（編集は描く前の素の DOM に当てる）
+  sh.innerHTML = (SHEET ? "" : "<style>" + BASE + "</style>") + P[nn].c[k];
+  applyEdits(sh, nn, k);
+  sh.querySelectorAll(".pp-chart").forEach(drawChart);
+  if (window.__arrows) window.__arrows(sh);
+}
+function applyEdits(sh, nn, k) {
+  var e = S[nn].edits[k];
+  if (!e) return;
+  var ps = partsOf(P[nn].c[k]), els = ppEls(sh);
+  if (els.length !== ps.length) return;  // 数が違うフレームには反映しない
+  Object.keys(e.items).forEach(function (key) {
+    var it = e.items[key], el = els[+key], p = ps[+key];
+    if (!el || !p) return;
+    GEO.forEach(function (g) { if (typeof it[g] === "number") el.style.setProperty(g, it[g] + "px"); });
+    if (it.text) {
+      var ns = ownTexts(el);
+      if (ns.length !== p.texts.length || ns.length !== it.text.length) return;
+      ns.forEach(function (n, j) {
+        var raw = n.nodeValue;
+        n.nodeValue = raw.slice(0, raw.length - raw.trimStart().length) + it.text[j] + raw.slice(raw.trimEnd().length);
+      });
+    }
+  });
+}
+function setEdit(nn, k, i, patch) {
+  if (!P[nn] || !(FR[nn] || {})[k]) return;
+  var ps = partsOf(P[nn].c[k]), p = ps[i], e = S[nn].edits[k] || {ef: FR[nn][k], items: {}};
+  if (!p) return;
+  var it = Object.assign({}, e.items[i], patch);
+  GEO.forEach(function (g) { if (g in it && parseFloat(p.style[g]) === it[g]) delete it[g]; });
+  if (it.text && it.text.length === p.texts.length && it.text.every(function (t, j) { return t === p.texts[j]; })) delete it.text;
+  if (Object.keys(it).length) e.items[i] = it; else delete e.items[i];
+  if (Object.keys(e.items).length) S[nn].edits[k] = e; else delete S[nn].edits[k];
+  touch(nn);
+  FRAMES.forEach(function (f) { if (f[1] === nn && f[2] === k && f[0].host.isConnected) paint(f[0], nn, k); });
+  refresh();
+}
+window.__rvEdit = {parts: partsOf, set: setEdit};
 function info(nn) {
   var s = S[nn];
   if (s.comment.trim()) return {c: "sel", t: "コメントあり"};
@@ -558,6 +632,12 @@ function payload() {
     if (Object.keys(s.checks).length) {  // 人の確認が 1 つでもあるページだけ（なければ従来の形）
       pages[nn] = pages[nn] || {pick: s.pick, status: "saved", comment: ""};
       pages[nn].checks = cleanChecks(s.checks);
+    }
+    if (Object.keys(s.edits).length) {  // 編集のあるページだけ（なければ従来の形）。編集は承認を外す
+      pages[nn] = pages[nn] || {pick: s.pick, status: "saved", comment: ""};
+      pages[nn].status = "saved";
+      delete pages[nn].fr;
+      pages[nn].edits = s.edits;
     }
   });
   var out = {"pptx-maker-review": 1, base: STAMP, check: fnv(JSON.stringify(pages)), pages: pages};
