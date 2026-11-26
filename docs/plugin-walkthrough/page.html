@@ -444,7 +444,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 {{outs:rv_import}}
 
 <h3>7.6 5 章 案の選択</h3>
-<p><span class="tag tag-note">解説</span><code>review-page</code> が <code>review.html</code> を作り、既定のブラウザで開く（デモは <code>--no-open</code> で開かなかった）。利用者が案を選んで承認し、「Claude に渡す」を押すと、選択結果の JSON がクリップボードに入る。利用者がそれをチャットに貼る。</p>
+<p><span class="tag tag-note">解説</span><code>review-page</code> が <code>review.html</code> を作り、既定のブラウザで開く（デモは <code>--no-open</code> で開かなかった）。利用者が案を選んで承認し、「Claude に渡す」を押すと、選択結果の JSON がクリップボードに入る。利用者がそれをチャットに貼る。カードの「編集」を押すと編集モードになり、選んだ案の文言と、部品の位置・サイズを直せる。直した差分は「Claude に渡す」の JSON の <code>edits</code> に入り、<code>choices-import</code> が断片へ書き戻して <code>edited</code> に出す（直した案のあるページは承認が外れ、再承認が要る）。部品の追加・削除はコメントで頼む。</p>
 <p class="sub"><span class="tag tag-read">読む</span>SKILL.md の 5 章（5.1 章を含む）</p>
 {{chap:plugins/pptx-maker/skills/create/SKILL.md|## 5. }}
 <p class="sub"><span class="tag tag-out">標準出力</span><code>review-page</code>（<code>warnings</code> は、図・表・グラフが主役でない案への警告）</p>
@@ -554,7 +554,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 
 <h2 id="s9">9　実際の画面</h2>
 <p><span class="tag tag-note">解説</span>次の画像は、デモの <code>review.html</code> を Chromium で実際に開いて撮ったスクリーンショット。撮影時のプラグインの版は v{{shotver}}、このページを作った時点の版は v{{ver}}。</p>
-<figure><img class="shot" src="images/review-walkthrough.png" alt="デモの案の選択ページ。上の帯に承認 2/3 と「Claude に渡す」、左にスライド 3 枚の一覧と状態、右に選んだ案の大きな表示、その下に案の縮小、コメント欄、承認ボタンが並ぶ。"><figcaption>案の選択ページ。左の一覧に状態の印、上の帯に承認の進み具合と「Claude に渡す」がある。</figcaption></figure>
+<figure><img class="shot" src="images/review-walkthrough.png" alt="デモの案の選択ページ。上の帯に承認 2/3 と「Claude に渡す」、左にスライド 3 枚の一覧と状態、右に選んだ案の大きな表示、その下に案の縮小、コメント欄、承認ボタンが並ぶ。撮影したカードは編集モードで、「編集を終える」「この案の編集を元に戻す」が出ている。"><figcaption>案の選択ページ。左の一覧に状態の印、上の帯に承認の進み具合と「Claude に渡す」がある。カードの「編集」を押した状態で撮っている。</figcaption></figure>
 
 <h2 id="s10">10　出典とライセンス</h2>
 <ul>
@@ -576,7 +576,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 <h4>確かめていないこと</h4>
 <ul>
 <li>Claude Code の中で <code>/pptx-maker:create</code> を実際に打ち、SKILL.md の <code>${CLAUDE_PLUGIN_ROOT}</code>・<code>${CLAUDE_PLUGIN_DATA}</code> が置き換わる様子。デモは <code>run.py</code> を直接実行した。</li>
-<li>案の選択ページ上の操作（案の選択・承認・「Claude に渡す」のクリップボードへのコピー）。貼り付け文は、書式から作った例である。</li>
+<li>案の選択ページ上の操作（案の選択・承認・編集モードの移動・リサイズ・文言の書き換え・「Claude に渡す」のクリップボードへのコピー）。貼り付け文は、書式から作った例である。</li>
 <li>断片 <code>slides/*.html</code> は、デモ用に見本を写して書き換えた。Claude が素材から設計して書く内容は、実行していない。</li>
 <li><code>setup --yes</code>（ライブラリと Chromium の導入）、<code>init-overwrite</code>・<code>build-overwrite</code>・<code>template-overwrite</code>、<code>rule apply</code> の書き込み、検査違反（終了コード 1）の <code>build</code>。</li>
 <li>PowerPoint での PPTX の実際の見え方。</li>

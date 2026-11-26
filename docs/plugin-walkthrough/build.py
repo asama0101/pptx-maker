@@ -435,6 +435,8 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={"width": 1400, "height": 1500})
     pg.goto(Path(sys.argv[1]).as_uri())
     pg.wait_for_timeout(800)
+    pg.locator(".rv-edit-btn").first.click()  # 編集モードのカードを撮る
+    pg.wait_for_timeout(300)
     pg.screenshot(path=sys.argv[2])
     b.close()
 """
