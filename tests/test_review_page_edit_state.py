@@ -126,3 +126,16 @@ def test_値が元に戻った項目は編集から消える(page):
     assert "edits" not in _share(page)["pages"].get("01", {})
     page.evaluate("__rvEdit.set('01', 'R2', 1, {text: ['本文 A2', '本文 B']})")
     assert "edits" not in _share(page)["pages"].get("01", {})
+
+
+def test_編集のあるページは承認も一括承認もできない(page):
+    page.click("#pg-01 .rvthumb[data-k='R2']")
+    page.evaluate("p => __rvEdit.set('01', 'R2', 1, p)", {"left": 100})
+    assert page.is_disabled("#pg-01 [data-act='approve']")
+    note = page.text_content("#pg-01 .rvnote:not(.rv-edit-note)")
+    assert "編集を Claude に渡して取り込んでから承認してください" in note
+    page.click("#rv-bulk")
+    assert page.text_content("#nav a[href='#pg-01'] em") != "承認済み"
+    assert "編集あり" in page.text_content("#rv-bulk-msg")
+    assert _share(page)["pages"]["01"]["status"] == "saved"
+    assert page.errors == []

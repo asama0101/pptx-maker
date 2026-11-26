@@ -405,6 +405,8 @@ def cmd_choices_import(args) -> int:
             cands=cands,
             on_parsed=clear_stale,
             edited=edited,
+            # 文言を直すと断片と script.md が食い違う。全体（deck）の AI 判定は断片の指紋が付かないので、ここで消す
+            on_text_edit=lambda: rulebook.clear_reviews(work, page="deck"),
         )
     except (OSError, ValueError) as e:
         print(f"エラー: {e}", file=sys.stderr)

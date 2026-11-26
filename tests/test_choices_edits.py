@@ -151,3 +151,53 @@ def test_edits_書き込みの途中で失敗したら断片も選択も元の�
     assert "disk full" in capsys.readouterr().err
     assert _snapshot(work) == snap
     assert not list(work.rglob("*.new"))
+
+
+def _write_reviews(work: Path) -> None:
+    review = {"status": "ok", "message": ""}
+    paths.write_json(
+        work / "rule-review.json",
+        {"reviews": [{"rule": "R01", "page": "deck", **review}, {"rule": "R05", "page": "02", **review}]},
+    )
+
+
+def _reviews(work: Path) -> set[tuple[str, str]]:
+    data = json.loads((work / "rule-review.json").read_text(encoding="utf-8"))
+    return {(r["rule"], r["page"]) for r in data["reviews"]}
+
+
+def test_edits_文言の直しは_deck_の_AI_判定を消す(tmp_path):
+    work = _setup(tmp_path)
+    _write_reviews(work)
+    edits = {"R2": {"ef": _ef(work), "items": {"1": {"text": ["新A", "本文 B"]}}}}
+
+    assert _run(work, tmp_path, {"01": _page(work, edits=edits)}) == 0
+
+    assert _reviews(work) == {("R05", "02")}  # deck だけ消え、ほかのページの判定は残る
+
+
+def test_edits_位置だけの直しは_deck_の_AI_判定を残す(tmp_path):
+    work = _setup(tmp_path)
+    _write_reviews(work)
+    edits = {"R2": {"ef": _ef(work), "items": {"1": {"left": 100}}}}
+
+    assert _run(work, tmp_path, {"01": _page(work, edits=edits)}) == 0
+
+    assert _reviews(work) == {("R01", "deck"), ("R05", "02")}
+
+
+def test_edits_結果が_unsafe_parts_に引っかかれば全件断り何も書かない(tmp_path, monkeypatch, capsys):
+    work = _setup(tmp_path)
+    edits = {"R2": {"ef": _ef(work), "items": {"1": {"left": 100}}}}
+    snap = _snapshot(work)
+    real = candidates.unsafe_parts  # 読み込み（collect）は通し、編集の結果（left:100px を含む）だけ引っかける
+    monkeypatch.setattr(candidates, "unsafe_parts", lambda h: ["script は使えません"] if "left:100px" in h else real(h))
+
+    code = _run(work, tmp_path, {"01": _page(work, edits=edits)})
+
+    err = capsys.readouterr().err
+    assert code == 2
+    assert "01-R2" in err
+    assert "script は使えません" in err
+    assert _snapshot(work) == snap
+    assert not list(work.rglob("*.new"))

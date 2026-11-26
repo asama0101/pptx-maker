@@ -319,7 +319,7 @@ function setEdit(nn, k, i, patch) {
 }
 window.__rvEdit = {parts: partsOf, set: setEdit};
 // --- 編集モードの操作: 選択・ドラッグ移動・ハンドルでのリサイズ・矢印キー・ダブルクリックでの文言編集（大きな表示の、選んでいる案だけ） ---
-var SEL = null, DRAG = null, NOTE = {}, DONE = "PPTX に反映するには、Claude に渡して、再承認してください";
+var SEL = null, DRAG = null, DONE = "PPTX に反映するには、Claude に渡して、再承認してください";
 function editing(nn) { return $("pg-" + nn).classList.contains("rv-editing"); }
 function caps(nn, k, i) {
   var p = partsOf(P[nn].c[k])[i], st = p ? p.style : {}, free = p && !p.nested && !p.fixed;
@@ -484,19 +484,21 @@ function setBig(nn) {
 }
 // 選び直し・コメントは承認をやり直しにする（承認は「今見えている案とコメントなし」への承認）
 function touch(nn) { if (S[nn].status === "approved") { S[nn].status = "saved"; S[nn].fr = null; } $("st").textContent = ""; $("rv-bulk-msg").textContent = ""; }
+function hasEdits(nn) { return Object.keys(S[nn].edits).length > 0; }
 function approveOne(nn) { if (!S[nn].pick) S[nn].pick = shown(nn); S[nn].status = "approved"; S[nn].fr = (FR[nn] || {})[S[nn].pick] || null; WARN[nn] = true; }
 function bulkApprove() {  // 案を選んであり、コメントが空で、人の確認の項目が全部済んでいるページを承認する。承認済みは変えない
-  var done = [], why = {comment: [], checks: [], nopick: []};
+  var done = [], why = {edits: [], comment: [], checks: [], nopick: []};
   order.forEach(function (nn) {
     var s = S[nn];
     if (s.status === "approved") return;
     if (!s.pick) why.nopick.push(nn);
+    else if (hasEdits(nn)) why.edits.push(nn);
     else if (s.comment.trim()) why.comment.push(nn);
     else if (unchecked(nn).length) why.checks.push(nn);
     else { approveOne(nn); done.push(nn); }
   });
   refresh();
-  var parts = [["コメントあり", why.comment], ["確認項目が未チェック", why.checks], ["案が未選択", why.nopick]].filter(function (x) { return x[1].length; }).map(function (x) { return x[0] + " " + x[1].length + " 件（" + x[1].join("・") + "）"; });
+  var parts = [["編集あり（Claude に渡して取り込んでから承認）", why.edits], ["コメントあり", why.comment], ["確認項目が未チェック", why.checks], ["案が未選択", why.nopick]].filter(function (x) { return x[1].length; }).map(function (x) { return x[0] + " " + x[1].length + " 件（" + x[1].join("・") + "）"; });
   $("rv-bulk-msg").textContent = "承認 " + done.length + " 件" + (parts.length ? "。承認しなかったページ: " + parts.join("、") : "。");
 }
 function unchecked(nn) { return BODY[nn] ? HUM.filter(function (x) { return !S[nn].checks[x.rule]; }) : []; }
@@ -551,7 +553,7 @@ order.forEach(function (nn) {
     dot.className = "rvdot " + i.c; em.textContent = i.t;
     bd.className = "rvbd " + i.c; bd.textContent = i.t;
     if (thumbs) [].forEach.call(thumbs.children, function (b) { b.classList.toggle("on", b.dataset.k === s.pick); });
-    ok.disabled = appr || !s.pick || cm;
+    ok.disabled = appr || !s.pick || cm || hasEdits(nn);
     ok.textContent = appr ? "承認済み ✓" : "承認";
     undo.hidden = !appr;
     er.hidden = !editing(nn);
@@ -561,7 +563,7 @@ order.forEach(function (nn) {
     hwarn.textContent = hwarn.hidden ? "" : "未確認の項目があります: " + left.map(function (x) { return x.rule + " " + x.name; }).join("、") + "。確認してから承認してください";
     hdone.hidden = !(appr && human);
     hdone.textContent = hdone.hidden ? "" : "確認済み " + (HUM.length - left.length) + "/" + HUM.length;
-    note.textContent = appr ? "このページは承認済みです。" : !s.pick ? "案を選んでください。" : cm ? "コメントがあるうちは承認できません。Claude に直してもらってから承認してください。" : "直したい点があればコメント欄へ。よければ「承認」。";
+    note.textContent = appr ? "このページは承認済みです。" : !s.pick ? "案を選んでください。" : hasEdits(nn) ? "編集を Claude に渡して取り込んでから承認してください。" : cm ? "コメントがあるうちは承認できません。Claude に直してもらってから承認してください。" : "直したい点があればコメント欄へ。よければ「承認」。";
   });
 });
 

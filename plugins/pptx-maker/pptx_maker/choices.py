@@ -270,7 +270,8 @@ def _apply_edits(
                 errors += [f"{where}: {m}" for m in problems]
                 continue
             frags[f] = new.encode("utf-8")
-            done.append({"slide": nn, "variant": key, "items": len(items)})
+            is_text = any("text" in v for v in items.values())
+            done.append({"slide": nn, "variant": key, "items": len(items), "text": is_text})
             page["status"] = "saved"
     if errors:
         raise ValueError("\n".join(errors))
@@ -285,6 +286,7 @@ def import_text(
     cands: dict[str, dict[str, str]] | None = None,
     on_parsed: Callable[[dict[str, dict]], None] | None = None,
     edited: list[dict] | None = None,
+    on_text_edit: Callable[[], None] | None = None,
 ) -> list[dict]:
     """選択ページがコピーした JSON を `<base>/choices/<NN>.json` に書く（含まれないページは触らない）。
     検査が全部通ったあと、書く直前に `before_write` を呼ぶ（配色など、選択と一緒に反映したいものを先に書く。
@@ -293,19 +295,22 @@ def import_text(
     `cands`（スライド番号 → 案の名前 → 断片の HTML）があれば、承認済みのページに選んだ断片の指紋 `frag` を書く。
     `edits`（編集モードの文言・位置の直し）は、断片（`slides/NN-<案>.html`）へ書き戻し、そのページを保存済み
     （saved・`frag` なし）で書く。書き換えた案を `edited` に `{"slide", "variant", "items"}` で追記する。
+    `on_text_edit` は、文言（`text`）の編集が 1 件でもあるとき、書く前に（`on_parsed` の前に）呼ぶ。
     コメントのあるページを `[{"slide": "03", "comment": "…"}]` で返す。"""
     parsed = _parse(text, base, valid, cands)
     frags, done = _apply_edits(base, parsed, cands)
     for nn, page in parsed.items():
         if cands and page["status"] == "approved" and page["pick"] in cands.get(nn, {}):
             page["frag"] = fragment_hash(cands[nn][page["pick"]])
+    if on_text_edit and any(d["text"] for d in done):
+        on_text_edit()
     if on_parsed:
         on_parsed(parsed)  # 書く前の処理（`frag` を含む、書く内容を渡す）。失敗すれば何も書かない
     if before_write:
         before_write()
     _commit(base, parsed, frags)
     if edited is not None:
-        edited.extend(done)
+        edited.extend({k: v for k, v in d.items() if k != "text"} for d in done)
     return [{"slide": nn, "comment": d["comment"]} for nn, d in sorted(parsed.items()) if d["comment"]]
 
 
