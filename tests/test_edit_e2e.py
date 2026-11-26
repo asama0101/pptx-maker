@@ -105,7 +105,9 @@ def test_編集した位置と文言が_PPTX_に出る(env, run, tmp_path):
     # 取り込んだだけでは承認が外れていて finalize は止まる
     rc, _, err = run("finalize", str(base), "--choices", str(work))
     assert rc == 2, err
-    assert "S02" in err
+    assert "S02: 承認されていません（状態: saved）" in err
+    assert "S01: 承認されていません" not in err
+    assert "AI 判定が済んでいません" in err  # 承認の取り下げとは別に、AI 判定の記録も消えている
     assert not (work / "final.html").exists()
 
     # 再承認しても、AI 判定の記録は消えたままなので止まる
