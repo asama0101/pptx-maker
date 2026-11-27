@@ -1,6 +1,6 @@
 # 開発者向けの情報
 
-pptx-maker（v0.2.1）の内部構造・コマンド・テストの説明。利用者向けの説明は [README.md](../README.md)。
+pptx-maker（v0.4.0）の内部構造・コマンド・テストの説明。利用者向けの説明は [README.md](../README.md)。
 
 ## 依存関係
 
