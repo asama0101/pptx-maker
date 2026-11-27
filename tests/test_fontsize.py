@@ -34,7 +34,7 @@ def _set_fontsizes(work, values):
 
 
 def test_theme_css_has_vars(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     css = (work / "theme.css").read_text(encoding="utf-8")
@@ -48,7 +48,7 @@ def test_theme_css_has_vars(tmp_path):
 
 
 def test_init_overwrite_は古い_fontsizes_を引き継がない(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     _set_fontsizes(work, {"title": 40})
@@ -76,7 +76,7 @@ def test_base_css_reads_vars():
 def test_theme_css_vars_are_inside_balanced_root(tmp_path):
     import re
 
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     css = (paths.resolve_work(base) / "theme.css").read_text(encoding="utf-8")
     assert css.count("{") == css.count("}")
@@ -117,7 +117,7 @@ def test_build_chart_font_ignores_stale_scale(pkg, tmp_path):
 
     from tests._measure import model_of
 
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     _set_fontsizes(work, {"chart-scale": 1.25})
@@ -278,7 +278,7 @@ def test_default_check_violations_unchanged(tmp_path):
 
     from tests._paths import REPO
 
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     info = template.TemplateInfo.from_dict(json.loads((work / "template.json").read_text(encoding="utf-8"))["info"])

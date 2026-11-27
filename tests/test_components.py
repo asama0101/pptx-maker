@@ -16,7 +16,7 @@ KEPT = sorted(COMP.glob("*/*.html"))
 
 @pytest.mark.slow
 def test_every_kept_fragment_passes_check(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     info = template.TemplateInfo.from_dict(json.loads((work / "template.json").read_text(encoding="utf-8"))["info"])

@@ -65,7 +65,7 @@ def test_大きさ0の角丸図形でも_ゼロ除算にならない():
 # ---- 7: clean は一時フォルダを作って消すだけ ----
 def test_clean_temp_は消したパスを返し_フォルダは残らない(tmp_path, monkeypatch):
     monkeypatch.setattr(paths.tempfile, "gettempdir", lambda: str(tmp_path))
-    work = tmp_path / "out" / "pptx-maker-source" / "deck"
+    work = tmp_path / "out" / ".pptx-maker-source" / "deck"
     d = paths.temp_dir("deck", work)
     (d / "x.png").write_bytes(b"x")
     r = lifecycle.clean_temp("deck", work)

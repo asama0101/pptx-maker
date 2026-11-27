@@ -429,7 +429,7 @@ def _import(capsys, tmp_path, work, reviews):
 
 
 def _w(tmp_path):
-    return _work(tmp_path / "out" / "pptx-maker-source" / "deck", _deck("- 論点: ①\n"), None, _slides())
+    return _work(tmp_path / "out" / ".pptx-maker-source" / "deck", _deck("- 論点: ①\n"), None, _slides())
 
 
 def _rv(rule, page, status, message=""):

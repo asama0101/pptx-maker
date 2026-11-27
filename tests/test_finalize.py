@@ -31,7 +31,7 @@ def _choice(work, base, nn, pick="R1", status="approved", comment="", frag=True)
 
 @pytest.fixture
 def work(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "demo"
+    base = tmp_path / "out" / ".pptx-maker-source" / "demo"
     initdir.init(base)
     w = paths.resolve_work(base)
     _slides(

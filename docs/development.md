@@ -22,7 +22,7 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
 ```
 <出力先>/
   <成果物名>.pptx
-  pptx-maker-source/<成果物名>/   元データ: design.md・script.md・slides/・template.json・material/ など
+  .pptx-maker-source/<成果物名>/   元データ: design.md・script.md・slides/・template.json・material/ など
 ```
 
 1. チャットで入力・成果物名を受け取り（出力先は聞かず、常にカレントディレクトリ）、`init` で作業フォルダを作る。

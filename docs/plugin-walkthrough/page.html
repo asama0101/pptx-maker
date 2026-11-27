@@ -121,7 +121,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 </header>
 
 <h2 id="s1">1　何が動いているか</h2>
-<p><span class="tag tag-note">解説</span>プラグインは、読み取り専用のフォルダ <code>plugins/pptx-maker/</code> である。利用者の成果物は、別の場所（<code>&lt;出力先&gt;/pptx-maker-source/&lt;成果物名&gt;/</code> と <code>&lt;出力先&gt;/&lt;成果物名&gt;.pptx</code>）に置く。次の表で、主なファイルの大きさ・読む人・役割を示す。</p>
+<p><span class="tag tag-note">解説</span>プラグインは、読み取り専用のフォルダ <code>plugins/pptx-maker/</code> である。利用者の成果物は、別の場所（<code>&lt;出力先&gt;/.pptx-maker-source/&lt;成果物名&gt;/</code> と <code>&lt;出力先&gt;/&lt;成果物名&gt;.pptx</code>）に置く。次の表で、主なファイルの大きさ・読む人・役割を示す。</p>
 <div class="scroll"><table>
 <tr><th>ファイル</th><th class="nw">大きさ</th><th>読む人</th><th>役割</th></tr>
 <tr><td><code>skills/create/SKILL.md</code></td><td class="nw">{{size:plugins/pptx-maker/skills/create/SKILL.md}}</td><td><ul><li>Claude（起動時に全文）</li></ul></td><td>資料を作る全手順。章ごとに、読む手順書と実行するコマンドを指す</td></tr>
@@ -145,7 +145,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 <li><span class="tag tag-note">解説</span><code>run.py</code> は、先頭の <code>--data &lt;絶対パス&gt;</code>（SKILL.md が渡す <code>${CLAUDE_PLUGIN_DATA}</code>）を環境変数 <code>PPTX_MAKER_HOME</code> として子プロセスに渡す。</li>
 <li>実行に使う Python は、<code>&lt;データの置き場&gt;/venv</code> の専用の仮想環境だけ。版と chromium が足りなければ終了コード 3 で止め、<code>setup --yes</code> を案内する。</li>
 <li>データの置き場（以下 <code>&lt;D&gt;</code>）に、仮想環境・登録したテンプレート（<code>templates/</code>）・追加したルール（<code>rules/custom.json</code>）が入る。</li>
-<li>成果物の作業フォルダは <code>&lt;出力先&gt;/pptx-maker-source/&lt;成果物名&gt;</code>。出力先は聞かず、常にカレントディレクトリ（<code>&lt;起動フォルダ&gt;</code>）。</li>
+<li>成果物の作業フォルダは <code>&lt;出力先&gt;/.pptx-maker-source/&lt;成果物名&gt;</code>。出力先は聞かず、常にカレントディレクトリ（<code>&lt;起動フォルダ&gt;</code>）。</li>
 </ul>
 
 <h2 id="s2">2　1 回のやり取りの順序</h2>
@@ -193,8 +193,8 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 <text x="330" y="318">init → lint-script（原稿を検査）</text>
 <text x="330" y="354">review-page（案の選択ページを作る）</text>
 <text x="770" y="384">review.html を開く</text>
-<text x="440" y="428">案を選ぶ・承認 →「Claude に渡す」で JSON をコピー</text>
-<text x="120" y="462">JSON を貼る（チャット）</text>
+<text x="440" y="428">案を選ぶ・承認 →「Claude に渡す」で JSON を window.__handoff に置く</text>
+<text x="120" y="462">browser_evaluate で読む（開けないときは貼る）</text>
 <text x="330" y="496">choices-import（検査して choices/NN.json に書く）</text>
 <text x="330" y="552">finalize（承認の照合 → final.html）</text>
 <text x="330" y="588">build（測定 → 検査 → PPTX）</text>
@@ -305,7 +305,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 <tr><td><code>run.py</code></td><td class="nw">3</td><td><ul><li>置き場が指定されていない</li><li>専用の仮想環境がない・版や chromium が足りない</li></ul></td><td class="nw">{{ln:plugins/pptx-maker/run.py:main}}</td></tr>
 <tr><td><code>doctor</code></td><td class="nw">3</td><td><code>[NG]</code> の行が 1 つでもある</td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/cli.py:cmd_doctor}}</td></tr>
 <tr><td><code>setup</code>（<code>--yes</code> なし）</td><td class="nw">3</td><td>承認を得るまで何も入れない。作成先と内容を出して止まる</td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/env.py:setup}}</td></tr>
-<tr><td><code>init</code></td><td class="nw">2</td><td><ul><li>作業フォルダが空でない</li><li>パスが <code>pptx-maker-source</code> の直下でない</li><li>テンプレートが 16:9 でない、など</li></ul></td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/initdir.py:init}}</td></tr>
+<tr><td><code>init</code></td><td class="nw">2</td><td><ul><li>作業フォルダが空でない</li><li>パスが <code>.pptx-maker-source</code> の直下でない</li><li>テンプレートが 16:9 でない、など</li></ul></td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/initdir.py:init}}</td></tr>
 <tr><td><code>template-import</code></td><td class="nw">2 / 4</td><td><ul><li>2: 拡張子・形・名前が不正</li><li>4: 同じ名前がある（置き換えは <code>template-overwrite</code>）</li></ul></td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/templatestore.py:import_template}}</td></tr>
 <tr><td><code>lint-script</code></td><td class="nw">1</td><td>原稿の書式・題・ヘッドメッセージ・論点の個数に問題がある</td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/cli.py:cmd_lint_script}}</td></tr>
 <tr><td><code>rule-review-import</code></td><td class="nw">2</td><td>AI のルールでない・存在しないページ・不正な <code>status</code>（何も書かない）</td><td class="nw">{{ln:plugins/pptx-maker/pptx_maker/cli.py:cmd_rule_review_import}}</td></tr>
@@ -368,7 +368,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 {{out:init}}
 <p class="sub"><span class="tag tag-out">標準出力</span>止まる例 1: 空でないフォルダに <code>init</code>（終了コード 2）</p>
 {{outs:init_dup}}
-<p class="sub"><span class="tag tag-out">標準出力</span>止まる例 2: <code>pptx-maker-source</code> の直下でないパス（終了コード 2）</p>
+<p class="sub"><span class="tag tag-out">標準出力</span>止まる例 2: <code>.pptx-maker-source</code> の直下でないパス（終了コード 2）</p>
 {{outs:init_bad_path}}
 <p class="sub"><span class="tag tag-out">標準出力</span>入力が PPTX のときの <code>pptx-extract</code>（デモで作った PPTX を読む）</p>
 {{out:extract}}
@@ -444,7 +444,7 @@ summary:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outli
 {{outs:rv_import}}
 
 <h3>7.6 5 章 案の選択</h3>
-<p><span class="tag tag-note">解説</span><code>review-page</code> が <code>review.html</code> を作り、既定のブラウザで開く（デモは <code>--no-open</code> で開かなかった）。利用者が案を選んで承認し、「Claude に渡す」を押すと、選択結果の JSON がクリップボードに入る。利用者がそれをチャットに貼る。カードの「編集」を押すと編集モードになり、選んだ案の文言と、部品の位置・サイズを直せる。直した差分は「Claude に渡す」の JSON の <code>edits</code> に入り、<code>choices-import</code> が断片へ書き戻して <code>edited</code> に出す（直した案のあるページは承認が外れ、再承認が要る）。部品の追加・削除はコメントで頼む。</p>
+<p><span class="tag tag-note">解説</span><code>review-page</code> が <code>review.html</code> を作る（create スキルは <code>--no-open</code> で作り、Claude が Playwright のブラウザで開く。デモも開かなかった）。利用者が案を選んで承認し、「Claude に渡す」を押すと、選択結果の JSON がクリップボードに入り、同じ文字列がページの変数 <code>window.__handoff</code> にも置かれる。Claude が <code>browser_evaluate</code> でそれを読み、<code>choices-import</code> に渡す（Playwright で開けないときは、利用者がクリップボードの内容をチャットに貼る）。カードの「編集」を押すと編集モードになり、選んだ案の文言と、部品の位置・サイズを直せる。直した差分は「Claude に渡す」の JSON の <code>edits</code> に入り、<code>choices-import</code> が断片へ書き戻して <code>edited</code> に出す（直した案のあるページは承認が外れ、再承認が要る）。部品の追加・削除はコメントで頼む。</p>
 <p class="sub"><span class="tag tag-read">読む</span>SKILL.md の 5 章（5.1 章を含む）</p>
 {{chap:plugins/pptx-maker/skills/create/SKILL.md|## 5. }}
 <p class="sub"><span class="tag tag-out">標準出力</span><code>review-page</code>（<code>warnings</code> は、図・表・グラフが主役でない案への警告）</p>

@@ -67,7 +67,7 @@ def test_add_chart_は未対応型で従来の文言の例外にする():
 
 @pytest.mark.slow
 def test_不正なグラフ指定は_build_が_traceback_を出さずエラーで止まり_pptx_を書かない(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base, template_path=None, force=False, footer=None)
     work = paths.resolve_work(base)
     sec = (

@@ -30,7 +30,7 @@ CLOSING = '<section class="slide" data-layout="closing"><div class="pp-text" dat
 
 
 def _work(tmp_path: Path, small=SMALL) -> Path:
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     write_slide(work / "slides", "01", COVER)

@@ -30,7 +30,7 @@ def _rules_data(html: str):
 
 
 def _work(tmp_path: Path, script: str | None = SCRIPT, design: str | None = DESIGN) -> Path:
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     s = work / "slides"

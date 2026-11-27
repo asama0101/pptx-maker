@@ -20,8 +20,8 @@ def temp_root(tmp_path, monkeypatch):
 
 
 def test_同名で別の作業フォルダの一時フォルダは分かれ_同じ作業フォルダなら同じ場所(tmp_path, temp_root):
-    a = tmp_path / "A" / "pptx-maker-source" / "提案"
-    b = tmp_path / "B" / "pptx-maker-source" / "提案"
+    a = tmp_path / "A" / ".pptx-maker-source" / "提案"
+    b = tmp_path / "B" / ".pptx-maker-source" / "提案"
     da = paths.temp_dir("提案", a)
     db = paths.temp_dir("提案", b)
     assert da != db
@@ -32,13 +32,13 @@ def test_同名で別の作業フォルダの一時フォルダは分かれ_同�
 
 def test_作業フォルダを渡しても不正な名前は拒否される(temp_root):
     with pytest.raises(ValueError, match="一時フォルダの名前が不正です"):
-        paths.temp_dir("", temp_root / "x" / "pptx-maker-source" / "提案")
+        paths.temp_dir("", temp_root / "x" / ".pptx-maker-source" / "提案")
 
 
 def test_clean_は同名の別の成果物の一時フォルダを消さない(tmp_path, temp_root, capsys):
     works = []
     for side in ("A", "B"):
-        base = tmp_path / side / "pptx-maker-source" / "提案"
+        base = tmp_path / side / ".pptx-maker-source" / "提案"
         assert cli.main(["init", str(base)]) == 0
         works.append(paths.resolve_work(base))
     marks = []
@@ -54,13 +54,13 @@ def test_clean_は同名の別の成果物の一時フォルダを消さない(t
 
 
 def test_存在する作業フォルダはそのまま返る(tmp_path):
-    x = tmp_path / "X" / "pptx-maker-source" / "提案"
+    x = tmp_path / "X" / ".pptx-maker-source" / "提案"
     x.mkdir(parents=True)
     assert paths.resolve_work(x) == x.resolve()
 
 
 def test_init_は渡した作業フォルダに直接作り_入れ子の_source_を作らない(tmp_path):
-    x = tmp_path / "X" / "pptx-maker-source" / "提案"
+    x = tmp_path / "X" / ".pptx-maker-source" / "提案"
     assert cli.main(["init", str(x)]) == 0
     assert (x / "template.json").exists()
     assert not (x / "source").exists()

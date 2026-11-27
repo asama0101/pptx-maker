@@ -44,7 +44,7 @@ def custom_template(dst: Path) -> Path:
 @pytest.fixture
 def base(tmp_path) -> Path:
     """標準テンプレートで init した成果物の置き場。"""
-    b = tmp_path / "out" / "pptx-maker-source" / "deck"
+    b = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(b)
     return b
 
@@ -225,7 +225,7 @@ def test_check_は存在しない_html_なら測定せず終了コード2で止�
 
 
 def test_利用者のテンプレートが消えた成果物の_init_overwrite_は_template_を求めて終了コード2で止まる(tmp_path, capsys):
-    b = tmp_path / "out" / "pptx-maker-source" / "deck"
+    b = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(b, template_path=custom_template(tmp_path / "own.potx"))
     work = paths.resolve_work(b)
     assert paths.read_cfg(work)["custom_template"] is True
@@ -248,7 +248,7 @@ def test_標準テンプレートが消えた成果物の_init_overwrite_は標�
 
 
 def test_init_overwrite_で作り直しても利用者のテンプレートの印が残り_消えたら求める(tmp_path):
-    b = tmp_path / "out" / "pptx-maker-source" / "deck"
+    b = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(b, template_path=custom_template(tmp_path / "own.potx"))
     work = paths.resolve_work(b)
     initdir.init(b, force=True)
@@ -259,7 +259,7 @@ def test_init_overwrite_で作り直しても利用者のテンプレートの�
 
 
 def test_標準テンプレートを明示して_init_しても利用者のテンプレート扱いにならない(tmp_path):
-    b = tmp_path / "out" / "pptx-maker-source" / "deck"
+    b = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(b, template_path=STANDARD_POTX)
     assert paths.read_cfg(paths.resolve_work(b))["custom_template"] is False
 

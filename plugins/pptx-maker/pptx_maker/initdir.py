@@ -1,4 +1,4 @@
-"""作業フォルダ（<出力先>/pptx-maker-source/<成果物名>）の初期化。"""
+"""作業フォルダ（<出力先>/.pptx-maker-source/<成果物名>）の初期化。"""
 
 import filecmp
 import shutil
@@ -50,7 +50,7 @@ def _existing_cfg(work: Path) -> dict:
 
 
 def init(workdir, template_path=None, force: bool = False, footer: str | None = None) -> dict:
-    work = paths.resolve_work(workdir)  # <出力先>/pptx-maker-source/<成果物名>
+    work = paths.resolve_work(workdir)  # <出力先>/.pptx-maker-source/<成果物名>
     if work.exists() and any(work.iterdir()) and not force:
         raise FileExistsError(f"{work} は空ではありません。上書きしてよければ init-overwrite を使ってください")
     old = _existing_cfg(work) if force else {}

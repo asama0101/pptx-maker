@@ -153,7 +153,7 @@ def _cli(capsys, *argv):
 
 @pytest.fixture
 def deck(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     write_slide(work / "slides", "01", '<section class="slide">ONE</section>')

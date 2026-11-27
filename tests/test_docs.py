@@ -76,19 +76,47 @@ _SUBCOMMANDS = {
 
 # スキルごとに許す Read（プラグインの references・見本の読み取りだけ。`Read(*)` のような広い許可は書かない）
 _READS = {"create": ["references/*", "assets/*"]}
+# スキルごとに許す MCP ツール（案の選択ページを Playwright で開いて、渡された内容を読む 2 つだけ）
+_MCP = {"create": ["mcp__playwright__browser_navigate", "mcp__playwright__browser_evaluate"]}
 
 
 @pytest.mark.parametrize("name", SKILL_NAMES)
 def test_allowed_tools_は_サブコマンドごとの_run_py_だけに絞る(name):
     """`run.py *` のような広い許可は書かない。
-    許すのは、run.py のサブコマンドと、プラグインの references・見本の読み取りだけ。
-    案の選択はローカルのページなので、Artifact 系のツールは許さない。"""
+    許すのは、run.py のサブコマンドと、プラグインの references・見本の読み取りと、
+    案の選択ページを開いて読む Playwright の 2 ツールだけ。Artifact 系のツールは許さない。"""
     head = skill_text(name).split("\n---\n", 1)[0]
     m = re.search(r"^allowed-tools: '(.+)'$", head, re.M)
     assert m, f"{name}: allowed-tools がない"
     want = [f"Read(${{CLAUDE_PLUGIN_ROOT}}/{d})" for d in _READS.get(name, [])]
     want += [f"{_RUN_PY}{sub})" for sub in _SUBCOMMANDS[name]]
-    assert re.findall(r"Bash\([^)]*\)|[A-Za-z]+\([^)]*\)|[A-Za-z]+", m.group(1)) == want
+    want += _MCP.get(name, [])
+    assert re.findall(r"Bash\([^)]*\)|[A-Za-z]+\([^)]*\)|[A-Za-z_]+", m.group(1)) == want
+
+
+def test_create_は_playwright_で開いて_handoff_を待ち_使えなければ貼り付けに戻る():
+    t = skill_text("create")
+    for word in (
+        "--no-open",
+        "browser_navigate",
+        "browser_evaluate",
+        "window.__handoff",
+        "delete window.__handoff",
+        "パーセントエンコード",
+        "choices-import",
+        "貼り付け",
+    ):
+        assert word in t, word
+    flow = read(PKG / "references" / "review-flow.md")
+    assert "window.__handoff" in flow
+    assert "貼り付け" in flow
+
+
+def test_create_の_playwright_の待ちは_100_秒_18_回で_finalize_と_build_を自動にしない():
+    t = skill_text("create")
+    assert "100 秒" in t
+    assert "18 回" in t
+    assert "取り込みの処理の中では" in t
 
 
 @pytest.mark.parametrize("key", ["name", "version", "description", "license", "repository", "keywords"])
@@ -457,3 +485,38 @@ def test_create_のページごとの_AI_判定は実装の_AI_PAGE_RULES_と一
 def test_references_に置き換わる前提の変数を書かない(f):
     """Read で開いた references では ${...} が置き換わらない。"""
     assert "${" not in read(f)
+
+
+def test_旧名のドットなし_pptx_maker_source_が残っていない():
+    """`.pptx-maker-source` ではない旧名を、リポジトリの文書・コード・テストから探す。
+    例外: 旧名の拒否のテストの行（`旧名の拒否のテスト` を含む行）。
+    対象外: docs/superpowers/（作業用）・docs/grill-spec/（SPEC が旧名を説明する）・キャッシュ。"""
+    pat = re.compile(r"(?<![.\w])pptx-maker-" + "source")  # このテスト自身が検査に当たらないよう、連結して書く
+    skip = ("docs/superpowers/", "docs/grill-spec/", "__pycache__/")
+    found = []
+    for root in ("plugins", "tests", "docs", "README.md", "CLAUDE.md"):
+        base = REPO / root
+        files = [base] if base.is_file() else sorted(base.rglob("*"))
+        for f in files:
+            posix = f.relative_to(REPO).as_posix()
+            if not f.is_file() or f.suffix not in {".py", ".md", ".html", ".svg", ".json"}:
+                continue
+            if any(s in posix for s in skip):
+                continue
+            for i, line in enumerate(read(f).splitlines(), 1):
+                if pat.search(line) and "旧名の拒否のテスト" not in line:
+                    found.append(f"{posix}:{i}")
+    assert found == []
+
+
+def test_create_は取り込んだあと_作り直して開き直してから待ちに戻る():
+    t = skill_text("create")
+    order = r"delete window\.__handoff.*?review-page \"<元データ>\" --no-open.*?browser_navigate.*?待ちに戻る"
+    assert re.search(order, t, re.S)
+
+
+def test_create_は評価できる待ちの関数をそのまま書く():
+    """ページの CSP は unsafe-eval を許さない。文字列の述語（wait_for_function）は使えず、Promise の関数を渡す。"""
+    t = skill_text("create")
+    for word in ("new Promise", "setTimeout", "100000", "window.__handoff"):
+        assert word in t, word
