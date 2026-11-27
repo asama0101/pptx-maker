@@ -9,7 +9,7 @@
 <text x="56" y="126" font-size="13" fill="#222222">PPTX。PowerPoint で開いて直す</text>
 <text x="56" y="148" font-size="13" fill="#222222">直した内容は取り込まれない</text>
 <rect x="420" y="70" width="340" height="110" rx="3" fill="#E8EEF6" stroke="#1F3A5F" stroke-width="2"/>
-<text x="436" y="98" font-size="15" font-weight="700" fill="#1F3A5F">pptx-maker-source/&lt;成果物名&gt;/</text>
+<text x="436" y="98" font-size="15" font-weight="700" fill="#1F3A5F">.pptx-maker-source/&lt;成果物名&gt;/</text>
 <text x="436" y="126" font-size="13" fill="#222222">元データ: 設計図・原稿・</text>
 <text x="436" y="148" font-size="13" fill="#222222">スライドの案・選択結果</text>
 <path d="M420 125 H360" fill="none" stroke="#1F3A5F" stroke-width="2" marker-end="url(#a)"/>

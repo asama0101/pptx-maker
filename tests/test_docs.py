@@ -485,3 +485,25 @@ def test_create_のページごとの_AI_判定は実装の_AI_PAGE_RULES_と一
 def test_references_に置き換わる前提の変数を書かない(f):
     """Read で開いた references では ${...} が置き換わらない。"""
     assert "${" not in read(f)
+
+
+def test_旧名のドットなし_pptx_maker_source_が残っていない():
+    """`.pptx-maker-source` ではない旧名を、リポジトリの文書・コード・テストから探す。
+    例外: 旧名の拒否のテストの行（`旧名の拒否のテスト` を含む行）。
+    対象外: docs/superpowers/（作業用）・docs/grill-spec/（SPEC が旧名を説明する）・キャッシュ。"""
+    pat = re.compile(r"(?<![.\w])pptx-maker-" + "source")  # このテスト自身が検査に当たらないよう、連結して書く
+    skip = ("docs/superpowers/", "docs/grill-spec/", "__pycache__/")
+    found = []
+    for root in ("plugins", "tests", "docs", "README.md", "CLAUDE.md"):
+        base = REPO / root
+        files = [base] if base.is_file() else sorted(base.rglob("*"))
+        for f in files:
+            posix = f.relative_to(REPO).as_posix()
+            if not f.is_file() or f.suffix not in {".py", ".md", ".html", ".svg", ".json"}:
+                continue
+            if any(s in posix for s in skip):
+                continue
+            for i, line in enumerate(read(f).splitlines(), 1):
+                if pat.search(line) and "旧名の拒否のテスト" not in line:
+                    found.append(f"{posix}:{i}")
+    assert found == []

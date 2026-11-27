@@ -57,7 +57,7 @@ class Demo:
         self.root = root
         self.home = root / "D"
         self.cwd = root / "起動"
-        self.work = self.cwd / "pptx-maker-source" / "demo"
+        self.work = self.cwd / ".pptx-maker-source" / "demo"
         self.scratch = root / "scratch"
         self.demo_src = demo_src
         self.steps: dict[str, dict] = {}
