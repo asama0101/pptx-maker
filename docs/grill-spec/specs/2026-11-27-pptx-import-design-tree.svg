@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 352 1052" width="352" height="1052" font-family="sans-serif" font-size="12">
+<title>決定の木</title>
+<rect x="16" y="16" width="260" height="48" rx="6" fill="#cfd8dc" stroke="#455a64"/>
+<text x="24" y="36" fill="#212121">Q1 既存の PPTX 入力で、何が足…</text>
+<text x="24" y="52" fill="#212121">非目標にする: PPTX を取り…</text>
+<rect x="16" y="84" width="260" height="48" rx="6" fill="#cfd8dc" stroke="#455a64"/>
+<text x="24" y="104" fill="#212121">Q2 HTML 上の編集機能のドラッグ…</text>
+<text x="24" y="120" fill="#212121">非目標にする: ドラッグ移動は変…</text>
+<rect x="16" y="152" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="172" fill="#212121">Q3 「隠しフォルダ」の作り方</text>
+<text x="24" y="188" fill="#212121">名前は `.pptx-maker…</text>
+<rect x="16" y="220" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="240" fill="#212121">Q4 戻し機能が対象にする PPTX</text>
+<text x="24" y="256" fill="#212121">pptx-maker 製の PP…</text>
+<rect x="16" y="288" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="308" fill="#212121">Q5 PowerPoint での直しの…</text>
+<text x="24" y="324" fill="#212121">A に加えて、部品の追加・削除も…</text>
+<rect x="16" y="356" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="376" fill="#212121">Q6 戻すときの確認方法</text>
+<text x="24" y="392" fill="#212121">差分を見せて、承認されたら書く</text>
+<rect x="16" y="424" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="444" fill="#212121">Q7 隠しフォルダの隠し方</text>
+<text x="24" y="460" fill="#212121">ドット名だけにする（隠し属性は付…</text>
+<rect x="16" y="492" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="512" fill="#212121">Q8 review.html から C…</text>
+<text x="24" y="528" fill="#212121">grill-spec と同じ方式…</text>
+<rect x="16" y="560" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="580" fill="#212121">Q9 Claude が「渡された」こと…</text>
+<text x="24" y="596" fill="#212121">grill-spec と同じ待ち…</text>
+<rect x="16" y="628" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="648" fill="#212121">Q10 ファイルへ直接書けないブラウザ・…</text>
+<text x="24" y="664" fill="#212121">コピーも残す: ボタンを押すと、…</text>
+<rect x="16" y="696" width="260" height="48" rx="6" fill="#cfd8dc" stroke="#455a64"/>
+<text x="24" y="716" fill="#212121">Q11 取り込んだあとの inbox/ …</text>
+<text x="24" y="732" fill="#212121">非目標にする: inbox/ と…</text>
+<rect x="16" y="764" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="784" fill="#212121">Q12 自動で行う範囲</text>
+<text x="24" y="800" fill="#212121">自動にするのは取り込み（`cho…</text>
+<rect x="16" y="832" width="260" height="48" rx="6" fill="#cfd8dc" stroke="#455a64"/>
+<text x="24" y="852" fill="#212121">Q13 利用者が選んだフォルダが、正しい…</text>
+<text x="24" y="868" fill="#212121">非目標にする: フォルダの選択と…</text>
+<rect x="16" y="900" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="920" fill="#212121">Q14 隠し属性と、フォルダ選択ダイアロ…</text>
+<text x="24" y="936" fill="#212121">隠し属性は付けない。ドット名だけ…</text>
+<rect x="16" y="968" width="260" height="48" rx="6" fill="#c8e6c9" stroke="#455a64"/>
+<text x="24" y="988" fill="#212121">Q15 ページの内容を、Claude が…</text>
+<text x="24" y="1004" fill="#212121">grill-spec と同じ: …</text>
+</svg>
