@@ -18,7 +18,7 @@ OLD_KEYS = {
 
 @pytest.fixture
 def old_work(tmp_path):
-    work = tmp_path / "out" / "pptx-maker-source" / "deck"
+    work = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(work)
     cfg = paths.read_cfg(work)
     cfg.update(OLD_KEYS)

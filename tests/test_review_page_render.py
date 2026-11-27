@@ -28,7 +28,7 @@ EVIL_TEXT = "&lt;img src=x onerror=&quot;window.__xss=1&quot;&gt;&lt;b id=&quot;
 
 def _open(p, tmp_path, init_script, slides, state=None):
     """state: 開く前に choices/ に取り込む選択結果（{"01": {"pick", "status", "comment"}}）。"""
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     # 表紙の色が違うテンプレートの代わり。この規則は文書の <style> からは shadow の中に届かない

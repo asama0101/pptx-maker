@@ -21,7 +21,7 @@ slow = pytest.mark.slow
 
 @pytest.fixture
 def work(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     return paths.resolve_work(base)
 

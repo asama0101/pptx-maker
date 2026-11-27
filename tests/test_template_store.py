@@ -85,7 +85,7 @@ def test_高さが0の領域を持つテンプレートは何も置かず終了�
 
 def test_高さが0の領域を持つテンプレートは_init_でも終了コード2(home, tmp_path, capsys):
     src = make_degenerate_pptx(tmp_path / "縮退.pptx")
-    work = tmp_path / "out" / "pptx-maker-source" / "資料"
+    work = tmp_path / "out" / ".pptx-maker-source" / "資料"
     rc, _, err = run(capsys, "init", str(work), "--template", str(src))
     assert rc == 2
     assert "エラー" in err
@@ -180,7 +180,7 @@ def test_登録したテンプレートのパスを_init_に渡して成果物�
     shutil.copy(pkg / "assets" / "template" / "standard.potx", tmp_path / "社内.potx")
     run(capsys, "template-import", str(tmp_path / "社内.potx"))
     path = json.loads(run(capsys, "template-list")[1])[0]["path"]
-    work = tmp_path / "out" / "pptx-maker-source" / "資料"
+    work = tmp_path / "out" / ".pptx-maker-source" / "資料"
     rc, _, err = run(capsys, "init", str(work), "--template", path)
     assert rc == 0, err
     assert (work / "_template" / "template.potx").is_file()

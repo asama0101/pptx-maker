@@ -103,7 +103,7 @@ def test_invalid_chart_spec_stops_with_message():
 
 
 def test_existing_pptx_requires_overwrite(tmp_path, capsys):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     assert cli.main(["init", str(base)]) == 0
     work = paths.resolve_work(base)
     (work / "final.html").write_text("<!doctype html><html><body></body></html>", encoding="utf-8")

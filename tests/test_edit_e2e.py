@@ -40,7 +40,7 @@ def env(tmp_path, monkeypatch, run, pkg):
     """表紙と本文の 2 ページ（どちらも 2 案）の作業フォルダ。原稿もあり、AI 判定が要る。"""
     monkeypatch.setenv("PPTX_MAKER_HOME", str(tmp_path / "home"))
     comp = pkg / "assets" / "components" / "layouts"
-    base = tmp_path / "out" / "pptx-maker-source" / "demo"
+    base = tmp_path / "out" / ".pptx-maker-source" / "demo"
     assert run("init", str(base))[0] == 0
     work = paths.resolve_work(base)
     write_slide(work / "slides", "01", (comp / "cover.html").read_text(encoding="utf-8"))

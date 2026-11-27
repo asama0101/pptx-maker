@@ -22,7 +22,7 @@ def browser():
 
 
 def make_slides(tmp_path, names):
-    work = tmp_path / "out" / "pptx-maker-source" / "d"
+    work = tmp_path / "out" / ".pptx-maker-source" / "d"
     (work / "slides").mkdir(parents=True)
     for n in names:
         (work / "slides" / n).write_text(FRAG_OK, encoding="utf-8")

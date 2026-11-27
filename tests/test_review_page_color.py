@@ -15,7 +15,7 @@ BLUE_RED = "- 基調色: #0E6B73\n- 強調色: #C0392B\n"
 
 
 def _work(tmp_path: Path, design: str | None = BLUE_RED) -> Path:
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     s = work / "slides"

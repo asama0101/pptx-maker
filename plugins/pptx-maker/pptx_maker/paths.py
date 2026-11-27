@@ -119,7 +119,7 @@ def temp_dir(name: str, work=None) -> Path:
     return d
 
 
-SOURCE_PARENT = "pptx-maker-source"
+SOURCE_PARENT = ".pptx-maker-source"  # ドットで始める（Obsidian・vault-index などの対象から外れる）
 
 
 class LayoutError(ValueError):
@@ -127,8 +127,8 @@ class LayoutError(ValueError):
 
 
 def resolve_work(arg: str | Path) -> Path:
-    """コマンドの引数を、作業フォルダ（<出力先>/pptx-maker-source/<成果物名>）に解決する。
-    .pptx のパスを渡すと、その隣の pptx-maker-source/<成果物名> にする。"""
+    """コマンドの引数を、作業フォルダ（<出力先>/.pptx-maker-source/<成果物名>）に解決する。
+    .pptx のパスを渡すと、その隣の .pptx-maker-source/<成果物名> にする。"""
     arg = Path(arg)
     is_pptx = arg.suffix.lower() == ".pptx"
     if is_pptx and (arg.parent / "source" / "template.json").is_file():
@@ -149,7 +149,7 @@ def resolve_work(arg: str | Path) -> Path:
 
 
 def deck_dir(work: Path) -> Path:
-    """出力先（PPTX・HTML を置く、pptx-maker-source の親）。"""
+    """出力先（PPTX・HTML を置く、.pptx-maker-source の親）。"""
     return Path(work).parent.parent
 
 

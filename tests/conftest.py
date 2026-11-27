@@ -34,5 +34,5 @@ def pytest_collection_modifyitems(items):
 
 @pytest.fixture
 def deck_base(tmp_path) -> Path:
-    """成果物の作業フォルダ（<出力先>/pptx-maker-source/<成果物名>）。resolve_work(deck_base) はそのまま返る。"""
-    return tmp_path / "out" / "pptx-maker-source" / "deck"
+    """成果物の作業フォルダ（<出力先>/.pptx-maker-source/<成果物名>）。resolve_work(deck_base) はそのまま返る。"""
+    return tmp_path / "out" / ".pptx-maker-source" / "deck"

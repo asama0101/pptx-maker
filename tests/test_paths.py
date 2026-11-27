@@ -3,7 +3,7 @@ import sys
 import tempfile
 
 import pytest
-from pptx_maker import cli, paths
+from pptx_maker import cli, initdir, paths
 
 
 @pytest.fixture
@@ -72,12 +72,12 @@ def test_build_は空の成果物名なら終了コード2で止まり測定し�
 
 
 def test_pptx_のパスから元データのフォルダを決める(tmp_path):
-    expected = (tmp_path / "out" / "pptx-maker-source" / "a").resolve()
+    expected = (tmp_path / "out" / ".pptx-maker-source" / "a").resolve()
     assert paths.resolve_work(tmp_path / "out" / "a.pptx") == expected
 
 
 def test_作業フォルダのパスはそのまま返り_deck_dir_は出力先_deck_name_は成果物名(tmp_path):
-    work = tmp_path / "out" / "pptx-maker-source" / "deck"
+    work = tmp_path / "out" / ".pptx-maker-source" / "deck"
     resolved = paths.resolve_work(work)
     assert resolved == work.resolve()
     assert paths.deck_dir(resolved) == (tmp_path / "out").resolve()
@@ -98,7 +98,7 @@ def test_旧配置のパスは未対応のエラーになる_source_を渡した
 
 
 def test_pptx_maker_source_の外のパスは_LayoutError(tmp_path):
-    with pytest.raises(paths.LayoutError, match="pptx-maker-source"):
+    with pytest.raises(paths.LayoutError, match=".pptx-maker-source"):
         paths.resolve_work(tmp_path / "x")
 
 
@@ -119,3 +119,25 @@ def test_旧配置の_pptx_パスは未対応のエラーになる(tmp_path):
     (old / "source" / "template.json").write_text("{}", encoding="utf-8")
     with pytest.raises(paths.LayoutError, match="旧配置は未対応"):
         paths.resolve_work(old / "demo.pptx")
+
+
+def test_pptx_のパスは新名の作業フォルダに解決される(tmp_path):
+    out = tmp_path / "出 力 先"  # 日本語・空白
+    assert paths.resolve_work(out / "deck.pptx") == out.resolve() / ".pptx-maker-source" / "deck"
+
+
+def test_旧名の作業フォルダのパスは_LayoutError(tmp_path):
+    old = tmp_path / "out" / "pptx-maker-source" / "deck"  # 旧名の拒否のテスト（旧名を使う唯一の例外）
+    with pytest.raises(paths.LayoutError, match=r"\.pptx-maker-source"):
+        paths.resolve_work(old)
+
+
+def test_同じ出力先で別の成果物名を_init_しても前の作業フォルダは変わらない(tmp_path):
+    out = tmp_path / "出 力 先"
+    first = out / ".pptx-maker-source" / "a"
+    initdir.init(first)
+    before = (first / "design.md").read_bytes()
+    second = out / ".pptx-maker-source" / "b"
+    initdir.init(second)
+    assert (first / "design.md").read_bytes() == before
+    assert sorted(p.name for p in (out / ".pptx-maker-source").iterdir()) == ["a", "b"]

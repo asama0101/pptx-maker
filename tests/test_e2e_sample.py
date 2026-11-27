@@ -49,7 +49,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
     monkeypatch.setattr(subprocess, "run", spy_run)
     monkeypatch.setattr(subprocess, "Popen", spy_popen)
 
-    base = tmp_path / "out" / "pptx-maker-source" / "demo"
+    base = tmp_path / "out" / ".pptx-maker-source" / "demo"
     assert run("init", str(base))[0] == 0
     work = paths.resolve_work(base)
     slides = work / "slides"
@@ -93,7 +93,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
     assert [v for v in result["violations"] if v["severity"] == "error"] == []
     assert "final.html" in result["removed"]
     assert "review.html" in result["removed"]
-    assert sorted(p.name for p in base.parent.parent.iterdir()) == ["demo.pptx", "pptx-maker-source"]
+    assert sorted(p.name for p in base.parent.parent.iterdir()) == [".pptx-maker-source", "demo.pptx"]
     assert not (work / "theme.css").exists()
     assert result["previews"]
 
@@ -115,7 +115,7 @@ def test_全工程をLibreOfficeを呼ばずに通し_既存のPPTXは黙って�
 
 
 def test_build_stops_on_fourth_hue(tmp_path, run, comp):
-    base = tmp_path / "out" / "pptx-maker-source" / "demo"
+    base = tmp_path / "out" / ".pptx-maker-source" / "demo"
     assert run("init", str(base))[0] == 0
     work = paths.resolve_work(base)
     html = read(comp / "layouts" / "text.html")
@@ -132,7 +132,7 @@ def test_build_stops_on_fourth_hue(tmp_path, run, comp):
 
 
 def test_同梱の全部品がbuildを通り色と文字の規約で誤検出しない(tmp_path, run, comp):
-    base = tmp_path / "out" / "pptx-maker-source" / "demo"
+    base = tmp_path / "out" / ".pptx-maker-source" / "demo"
     assert run("init", str(base))[0] == 0
     work = paths.resolve_work(base)
     parts = sorted(p for d in ("layouts", "charts", "tables") for p in (comp / d).glob("*.html"))

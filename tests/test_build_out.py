@@ -25,7 +25,7 @@ PKG = Path(__file__).resolve().parent.parent / "plugins" / "pptx-maker"
 def pristine_deck(tmp_path_factory) -> Path:
     """init → 選択結果 → finalize まで進めた成果物（final.html つき）。
     どのテストも変更しない（コピーして使う）。"""
-    base = tmp_path_factory.mktemp("pristine") / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path_factory.mktemp("pristine") / "out" / ".pptx-maker-source" / "deck"
     assert cli.main(["init", str(base)]) == 0
     work = paths.resolve_work(base)
     cover = (PKG / "assets" / "components" / "layouts" / "cover.html").read_text(encoding="utf-8")
@@ -38,7 +38,7 @@ def pristine_deck(tmp_path_factory) -> Path:
 @pytest.fixture
 def work(pristine_deck, tmp_path) -> Path:
     """final.html まで進んだ成果物（作業フォルダ）。テストごとのコピー。"""
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     shutil.copytree(pristine_deck, base)
     return paths.resolve_work(base)
 

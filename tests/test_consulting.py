@@ -253,7 +253,7 @@ def test_rule_report_古い原稿では論点の項目を出さない(tmp_path):
 
 
 def test_rule_report_コマンドが_JSON_を出す(tmp_path, capsys):
-    work = _work(tmp_path / "out" / "pptx-maker-source" / "deck", _deck("- 論点: ①\n"), None, _slides())
+    work = _work(tmp_path / "out" / ".pptx-maker-source" / "deck", _deck("- 論点: ①\n"), None, _slides())
     assert cli.main(["rule-report", str(work)]) == 0
     assert set(json.loads(capsys.readouterr().out)) == {"rules", "deck", "pages", "human"}
 

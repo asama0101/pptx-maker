@@ -8,7 +8,7 @@ from tests.test_review_page_render import _slides
 
 
 def test_choices_import_は_direction_を無視する(tmp_path):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     initdir.init(base)
     work = paths.resolve_work(base)
     s = work / "slides"

@@ -34,7 +34,7 @@ def test_force_は認識されず終了コード2(cmd, tmp_path, capsys):
 
 
 def test_init_は空でないと終了コード2_init_overwrite_は上書きする(tmp_path, capsys):
-    base = tmp_path / "out" / "pptx-maker-source" / "deck"
+    base = tmp_path / "out" / ".pptx-maker-source" / "deck"
     assert cli.main(["init", str(base), "--footer", "A"]) == 0
     work = paths.resolve_work(base)
     capsys.readouterr()
