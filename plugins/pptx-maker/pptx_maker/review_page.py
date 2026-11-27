@@ -791,11 +791,11 @@ $("share").addEventListener("click", async function () {
   try {
     await navigator.clipboard.writeText(t);
     box.hidden = true;
-    st.textContent = "コピーしました。チャットに貼り付けてください。";
+    st.textContent = "コピーしました。Claude が受け取れないときだけ、チャットに貼り付けてください。";
   } catch (e) {
     box.hidden = false;
     box.focus(); box.select();
-    st.textContent = "自動でコピーできませんでした。下の欄を全選択してコピーし、チャットに貼り付けてください。";
+    st.textContent = "自動でコピーできませんでした。Claude が受け取れないときは、下の欄を全選択してコピーし、チャットに貼り付けてください。";
   }
 });
 })();

@@ -507,3 +507,16 @@ def test_旧名のドットなし_pptx_maker_source_が残っていない():
                 if pat.search(line) and "旧名の拒否のテスト" not in line:
                     found.append(f"{posix}:{i}")
     assert found == []
+
+
+def test_create_は取り込んだあと_作り直して開き直してから待ちに戻る():
+    t = skill_text("create")
+    order = r"delete window\.__handoff.*?review-page \"<元データ>\" --no-open.*?browser_navigate.*?待ちに戻る"
+    assert re.search(order, t, re.S)
+
+
+def test_create_は評価できる待ちの関数をそのまま書く():
+    """ページの CSP は unsafe-eval を許さない。文字列の述語（wait_for_function）は使えず、Promise の関数を渡す。"""
+    t = skill_text("create")
+    for word in ("new Promise", "setTimeout", "100000", "window.__handoff"):
+        assert word in t, word

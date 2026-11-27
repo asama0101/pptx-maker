@@ -495,3 +495,23 @@ def test_古いページの_handoff_は取り込まれず何も書かれない(p
     with pytest.raises(ValueError, match="古いページ"):
         choices.import_text(pg.work, old)
     assert sorted(p.name for p in (pg.work / "choices").iterdir()) == before
+
+
+def test_渡した直後の表示は_貼り付けを受け取れないときだけに限る(page):
+    """Claude が `window.__handoff` を読むので、表示が「貼り付けてください」とだけ言うと、利用者が重ねて貼る。"""
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R1']")
+    pg.click("#share")
+    pg.wait_for_function("document.getElementById('st').textContent !== ''")
+    text = pg.text_content("#st")
+    assert "受け取れないとき" in text
+    assert text.count("貼り付け") == 1
+
+
+@pytest.mark.parametrize("page", [CLIP_FAIL], indirect=True, ids=["コピー失敗"])
+def test_コピーできなかった表示も_受け取れないときだけ貼り付けを求める(page):
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R1']")
+    pg.click("#share")
+    pg.wait_for_function("!document.getElementById('out').hidden")
+    assert "受け取れないとき" in pg.text_content("#st")
