@@ -448,3 +448,50 @@ def test_clearing_a_comment_on_a_page_without_pick_is_shared(tmp_path):
         work = pg.work
     choices.import_text(work, json.dumps(shared))
     assert choices.load(work)["01"]["comment"] == ""
+
+
+def test_渡すと_handoff_がコピーと同じ文字列になり_取り込める(page):
+    pg, _ = page
+    pg.click("#pg-03 .rvthumb[data-k='R2']")
+    pg.fill("#pg-03 textarea", '色を落として、"強調" は 1 つに。\n2 行目 \\ 𠮷 😀 <b>')
+    pg.click("#share")
+    pg.wait_for_function("document.getElementById('st').textContent !== ''")
+    assert pg.evaluate("window.__handoff") == pg.evaluate("window.__copied")
+    assert choices.import_text(pg.work, pg.evaluate("window.__handoff")) == [
+        {"slide": "03", "comment": '色を落として、"強調" は 1 つに。\n2 行目 \\ 𠮷 😀 <b>'}
+    ]
+
+
+@pytest.mark.parametrize("page", [CLIP_FAIL], indirect=True, ids=["コピー失敗"])
+def test_コピーに失敗しても_handoff_は置かれる(page):
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R1']")
+    pg.click("#share")
+    pg.wait_for_function("!document.getElementById('out').hidden")
+    assert json.loads(pg.evaluate("window.__handoff"))["pages"]["01"]["pick"] == "R1"
+
+
+def test_続けて_2_回押すと_2_回目の内容になる(page):
+    pg, _ = page
+    pg.click("#pg-01 .rvthumb[data-k='R1']")
+    first = _share(pg)
+    pg.click("#pg-01 .rvthumb[data-k='R2']")
+    pg.click("#share")
+    second = json.loads(pg.evaluate("window.__handoff"))  # クリック処理の中で同期的に置かれる
+    assert first["pages"]["01"]["pick"] == "R1"
+    assert second["pages"]["01"]["pick"] == "R2"
+
+
+def test_古いページの_handoff_は取り込まれず何も書かれない(page):
+    pg, _ = page
+    pg.click("#pg-03 .rvthumb[data-k='R1']")
+    pg.fill("#pg-03 textarea", "直して")
+    pg.click("#share")
+    old = pg.evaluate("window.__handoff")
+    assert old is not None
+    choices.import_text(pg.work, old)
+    choices.resolve(pg.work, ["03"])
+    before = sorted(p.name for p in (pg.work / "choices").iterdir())
+    with pytest.raises(ValueError, match="古いページ"):
+        choices.import_text(pg.work, old)
+    assert sorted(p.name for p in (pg.work / "choices").iterdir()) == before

@@ -787,6 +787,7 @@ $("rv-bulk").addEventListener("click", bulkApprove);
 $("share").addEventListener("click", async function () {
   var t = payload(), box = $("out"), st = $("st");
   box.value = t;
+  window.__handoff = t;  // Claude が Playwright で読む渡し先（コピーの成否に依存させない）
   try {
     await navigator.clipboard.writeText(t);
     box.hidden = true;
