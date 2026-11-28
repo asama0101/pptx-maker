@@ -99,32 +99,3 @@ LibreOffice と Playwright MCP は使わない。依存のハッシュ固定は�
     "<置き場>\venv\Scripts\python.exe" -m pytest
     "<置き場>\venv\Scripts\python.exe" -m ruff check .
     "<置き場>\venv\Scripts\python.exe" -m ruff format --check .
-
-## 動作解説ページ
-
-`docs/plugin-walkthrough/` は、プラグインの動作解説ページ（共有用に公開する HTML ページ）の元。`page.html`（文章のテンプレート）と `build.py`（標準ライブラリのみ）でできている。出力はリポジトリに入れず、一時フォルダに作る。
-
-    python docs/plugin-walkthrough/build.py --out <出力フォルダ>
-    python docs/plugin-walkthrough/build.py --out <出力フォルダ> --shoot
-
-- 導入済みの専用の仮想環境を借りて、リポジトリの外の一時フォルダで `run.py` を実際に動かす（3 枚のデモの資料。正常系と止まる例）。見つからなければ環境変数 `PPTX_MAKER_DEMO_VENV` で指定する。終わると一時フォルダを消す。
-- `--shoot` は、デモの案の選択ページを Chromium で開き、`docs/images/review-walkthrough.png` を撮り直す。撮ったら `build.py` の `SHOT_VERSION` を直し、画面の内容がページの説明と合っているかを読んで確かめる。
-- 出力の `index.html` を、画像（`images/review-walkthrough.png`）と一緒に共有用のページとして公開する。公開したページは、リポジトリと連動しない。
-
-`page.html` を直すときの決まり:
-
-- 値の写しを書かない。次の印で埋める。
-
-| 印 | 埋まるもの |
-|---|---|
-| `{{ver}}`・`{{shotver}}` | プラグインの版・画像を撮った版 |
-| `{{size:<パス>}}`・`{{count:<glob>}}` | ファイルの大きさ・件数 |
-| `{{ln:<パス>:<関数名>}}` | 関数の定義の行（構文解析で求める） |
-| `{{file:<パス>}}`・`{{chap:<パス>\|<見出し>}}` | ファイルの全文・Markdown の 1 章 |
-| `{{out:<キー>}}`・`{{outs:<キー>}}` | デモの実行結果（`outs` は折りたたまない） |
-| `{{demo:<名前>}}` | デモで Claude が書く文章（原稿・断片・JSON・貼り付け文） |
-
-- 表示する `<` は、HTML として解釈されて消えるので、`&lt;` と書く。
-- 解説（筆者の説明）と、実ファイル・実出力は、ラベル（解説・読む・書く・標準出力・戻り値）で区別する。
-- 確かめていないことは、最後の章に書く。
-- 手順書・出力・書式を変えたときの見直しは、プロジェクトの `CLAUDE.md` の「動作解説ページ」に従う。
